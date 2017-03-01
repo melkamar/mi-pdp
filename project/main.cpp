@@ -134,6 +134,7 @@ int main(int argc, char *argv[]) {
 
     char *fn = argv[1];
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\7";
     cout << "Loading input from file " << fn << endl;
@@ -141,16 +142,7 @@ int main(int argc, char *argv[]) {
     Graph graph = loadProblem(fn);
     doDFS(graph);
 
-//    int i = 0;
-//    int j = 0;
-//    int count = 0;
-//    while (true) {
-//        cout << "Increment (" << i << ", " << j << ") ->";
-//        bool res = incrementEdgeIndex(i, j, 5);
-//        cout << res << "(" << i << ", " << j << ") - position " << ++count << endl;
-//
-//        if (!res) break;
-//    }
+//    cout << "Is bipartite? " << graph.isBipartite() << endl;
 
     return 0;
 }

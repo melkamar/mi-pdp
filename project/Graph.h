@@ -16,6 +16,8 @@ public:
     void setAdjacency(int i, int j, bool value);
     void print(std::string prefix);
 
+    bool isBipartite();
+
     int nodes;
     int startI, startJ;
     bool **adjacency;
