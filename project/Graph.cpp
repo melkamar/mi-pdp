@@ -44,6 +44,17 @@ void Graph::setAdjacency(int i, int j, bool value) {
     adjacency[i][j] = value;
 }
 
+int Graph::getEdgesCount() {
+    int count = 0;
+    for (int i = 0; i < nodes; ++i) {
+        for (int j = 0; j < i; ++j) {
+            if (adjacency[i][j]) count++;
+        }
+    }
+
+    return count;
+}
+
 void Graph::print(string prefix) {
     // print header
     cout << prefix << "     ";

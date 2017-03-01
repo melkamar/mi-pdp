@@ -17,6 +17,7 @@ public:
     void print(std::string prefix);
 
     bool isBipartite();
+    int getEdgesCount();
 
     int nodes;
     int startI, startJ;

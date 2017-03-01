@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
     doDFS(graph);
 
 //    cout << "Is bipartite? " << graph.isBipartite() << endl;
+//    cout << "Edges: " << graph.getEdgesCount() << endl;
 
     return 0;
 }
