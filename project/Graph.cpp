@@ -32,6 +32,13 @@ Graph::Graph(const Graph &other) { // Copy constructor
     }
 }
 
+Graph::~Graph() {
+    for (int i = 0; i < nodes; ++i) {
+        delete adjacency[i];
+    }
+    delete [] adjacency;
+}
+
 void Graph::setAdjacency(int i, int j, bool value) {
     adjacency[i][j] = value;
 }

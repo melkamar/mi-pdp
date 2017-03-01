@@ -10,11 +10,10 @@
 class Graph {
 public:
     Graph(int nodes);
-
     Graph(const Graph &other);
+    virtual ~Graph();
 
     void setAdjacency(int i, int j, bool value);
-
     void print(std::string prefix);
 
     int nodes;

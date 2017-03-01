@@ -81,6 +81,8 @@ void doDFS(Graph &startGraph) {
             }
         } while (valid);
 
+        delete graph;
+
         while (!tempStack.empty()){
             Graph * tempGraph = tempStack.top();
             graphStack.push(tempGraph);
