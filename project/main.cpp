@@ -9,7 +9,6 @@
 using namespace std;
 
 
-
 /**
  * Increment the j-index with regard to the edges matrix. If j overflows, increment i and start from the diagonal.
  *
@@ -48,7 +47,7 @@ void doDFS(Graph &startGraph) {
     stack<Graph *> graphStack;
     stack<Graph *> tempStack; // used for rearranging the order of graphs in the "real" stack
 
-    graphStack.push(&startGraph);
+    graphStack.push(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
 
     cout << "::DFS:: starting." << endl;
     while (!graphStack.empty()) {
@@ -81,17 +80,16 @@ void doDFS(Graph &startGraph) {
             }
         } while (valid);
 
-        delete graph;
-
-        while (!tempStack.empty()){
-            Graph * tempGraph = tempStack.top();
+        while (!tempStack.empty()) {
+            Graph *tempGraph = tempStack.top();
             graphStack.push(tempGraph);
             tempStack.pop();
         }
 
+        delete graph;
         cout << "::DFS::   iteration done. Adding graphs to stack." << endl;
     }
-    cout << "::DFS:: complete. Graphs seen: "<<graphsCount;
+    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
 }
 
 Graph loadProblem(string filename) {
@@ -135,8 +133,9 @@ int main(int argc, char *argv[]) {
     }
 
     char *fn = argv[1];
-    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
-    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\7";
     cout << "Loading input from file " << fn << endl;
 
     Graph graph = loadProblem(fn);

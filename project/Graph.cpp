@@ -34,7 +34,7 @@ Graph::Graph(const Graph &other) { // Copy constructor
 
 Graph::~Graph() {
     for (int i = 0; i < nodes; ++i) {
-        delete adjacency[i];
+        delete [] adjacency[i];
     }
     delete [] adjacency;
 }
