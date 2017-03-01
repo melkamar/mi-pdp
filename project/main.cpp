@@ -37,45 +37,109 @@ public:
         adjacency[i][j] = value;
     }
 
-    void print() {
+    void print(string prefix) {
+        // print header
+        cout << prefix << "     ";
+        for (int j = 0; j < nodes; ++j) {
+            cout <<"("<<j<<") ";
+        }
+        cout << endl;
+        // done header
+
         for (int i = 0; i < nodes; ++i) {
+            cout << prefix << "("<<i<< ") |"; // left-column indices
             for (int j = 0; j < nodes; ++j) {
-                cout << (adjacency[i][j] ? "1" : "0");
+                cout << (adjacency[i][j] ? " 1" : " 0") << " |";
             }
             cout << endl;
         }
     }
 
-private:
     int nodes;
-    bool **adjacency;
     int startI, startJ;
+    bool **adjacency;
 };
 
-//class BFSSolver {
-//public:
-//
-//private:
-//};
+/**
+ * Increment the j-index with regard to the edges matrix. If j overflows, increment i and start from the diagonal.
+ *
+ * For nodes=4, the valid positions marked with O:
+ *
+ *     0 1 2 3
+ *   ---------
+ * 0 | X O O O
+ * 1 | X X O O
+ * 2 | X X X O
+ * 3 | X X X X
+ *
+ *
+ * @param i
+ * @param j
+ * @param nodes
+ * @returns True if the returned position is valid, false if there is not another valid position.
+ */
+bool incrementEdgeIndex(int &i, int &j, int nodes) {
+    j++;
 
-//void BFSSolver::findOptimal() {
-//
-//}
+    if (j > nodes - 1) { // j is outside of the matrix range (overflown to the right)
+        i++;
+        if (i > nodes - 2) // i is outside of the matrix range (overflown to the bottom), no more positions to try
+            return false;
+
+        j = i + 1;
+    }
+
+    return true;
+}
 
 void doDFS(Graph &startGraph) {
-    stack<Graph*> graphStack;
+    int graphsCount = 1;
+
+    stack<Graph *> graphStack;
+    stack<Graph *> tempStack; // used for rearranging the order of graphs in the "real" stack
+
     graphStack.push(&startGraph);
 
-    while (!graphStack.empty()){
-        Graph* graph = graphStack.top();
+    cout << "::DFS:: starting." << endl;
+    while (!graphStack.empty()) {
+        Graph *graph = graphStack.top();
         graphStack.pop();
-        cout << "::DFS:: Processing graph:"<<endl;
-        graph->print();
+        cout << "::DFS::   Processing graph:" << endl;
+        graph->print("::DFS::     ");
+        cout << endl;
 
+        int i = graph->startI;
+        int j = graph->startJ;
+        bool valid;
+        do {
+            valid = incrementEdgeIndex(i, j, graph->nodes);
+            cout << "::DFS::      Trying edge index [" << i << "," << j << "]" << endl;
+            if (valid && graph->adjacency[i][j]) { // the edge we are at is present -> create a new graph by removing it
+                graphsCount++;
 
+                Graph *newGraph = new Graph(*graph);
+                newGraph->setAdjacency(i, j, false);
+                newGraph->setAdjacency(j, i, false);
+                newGraph->startI = i;
+                newGraph->startJ = j;
 
-        cout << "::DFS:: done.";
+//                graphStack.push(newGraph);
+                tempStack.push(newGraph);
+
+                cout << "::DFS::         Edge was present, creating a new graph." << endl;
+//                newGraph->print("::DFS::       ");
+            }
+        } while (valid);
+
+        while (!tempStack.empty()){
+            Graph * tempGraph = tempStack.top();
+            graphStack.push(tempGraph);
+            tempStack.pop();
+        }
+
+        cout << "::DFS::   iteration done. Adding graphs to stack." << endl;
     }
+    cout << "::DFS:: complete. Graphs seen: "<<graphsCount;
 }
 
 Graph loadProblem(string filename) {
@@ -119,10 +183,23 @@ int main(int argc, char *argv[]) {
     }
 
     char *fn = argv[1];
+    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
+    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
     cout << "Loading input from file " << fn << endl;
 
     Graph graph = loadProblem(fn);
     doDFS(graph);
+
+//    int i = 0;
+//    int j = 0;
+//    int count = 0;
+//    while (true) {
+//        cout << "Increment (" << i << ", " << j << ") ->";
+//        bool res = incrementEdgeIndex(i, j, 5);
+//        cout << res << "(" << i << ", " << j << ") - position " << ++count << endl;
+//
+//        if (!res) break;
+//    }
 
     return 0;
 }
