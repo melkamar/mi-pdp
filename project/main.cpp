@@ -43,6 +43,7 @@ bool incrementEdgeIndex(int &i, int &j, int nodes) {
 
 void doDFS(Graph &startGraph) {
     int graphsCount = 1;
+    Graph *bestGraph = NULL;
 
     stack<Graph *> graphStack;
     stack<Graph *> tempStack; // used for rearranging the order of graphs in the "real" stack
@@ -53,17 +54,29 @@ void doDFS(Graph &startGraph) {
     while (!graphStack.empty()) {
         Graph *graph = graphStack.top();
         graphStack.pop();
-        cout << "::DFS::   Processing graph:" << endl;
-        graph->print("::DFS::     ");
-        cout << endl;
 
+        if (graph->isBipartite() && (!bestGraph || graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+            if (bestGraph)
+                delete bestGraph;
+            bestGraph = new Graph(*graph);
+        }
+
+//        cout << "::DFS::   Processing graph:" << endl;
+//        graph->print("::DFS::     ");
+//        cout << endl;
+
+
+        // Generate neighboring graphs by removing one edge from this one.
+        // Start with the [startI, startJ] edge in the adjacency matrix.
         int i = graph->startI;
         int j = graph->startJ;
-        bool valid;
+        bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
         do {
             valid = incrementEdgeIndex(i, j, graph->nodes);
             cout << "::DFS::      Trying edge index [" << i << "," << j << "]" << endl;
-            if (valid && graph->adjacency[i][j]) { // the edge we are at is present -> create a new graph by removing it
+            if (valid && graph->adjacency[i][j]) {
+                // if [i,j] are valid indices and the edge they point at
+                // are at is present -> create a new graph by removing the edge
                 graphsCount++;
 
                 Graph *newGraph = new Graph(*graph);
@@ -72,24 +85,37 @@ void doDFS(Graph &startGraph) {
                 newGraph->startI = i;
                 newGraph->startJ = j;
 
-//                graphStack.push(newGraph);
-                tempStack.push(newGraph);
+                // Uncomment following line if the walk-order does not matter
+                graphStack.push(newGraph);
+//                tempStack.push(newGraph);
 
                 cout << "::DFS::         Edge was present, creating a new graph." << endl;
 //                newGraph->print("::DFS::       ");
             }
         } while (valid);
 
-        while (!tempStack.empty()) {
-            Graph *tempGraph = tempStack.top();
-            graphStack.push(tempGraph);
-            tempStack.pop();
-        }
+//        while (!tempStack.empty()) {
+//            Graph *tempGraph = tempStack.top();
+//            graphStack.push(tempGraph);
+//            tempStack.pop();
+//        }
 
         delete graph;
         cout << "::DFS::   iteration done. Adding graphs to stack." << endl;
     }
     cout << "::DFS:: complete. Graphs seen: " << graphsCount;
+    cout << endl;
+
+    if (bestGraph) {
+        cout << "Best graph edges count: " << bestGraph->getEdgesCount() << endl;
+        bestGraph->print("BEST: ");
+    } else {
+        cout << "No best graph found. This should not happen!" << endl;
+        delete bestGraph;
+        exit(1);
+    }
+
+    delete bestGraph;
 }
 
 Graph loadProblem(string filename) {
