@@ -72,9 +72,10 @@ void doDFS(Graph &startGraph) {
         graphStack.pop();
 
         short bipOrConn = graph->isBipartiteOrConnected();
-        if (bipOrConn == 1 && (!bestGraph || graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+        if (bipOrConn == 1 && (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount()))) {
             if (bestGraph) delete bestGraph;
-            bestGraph = new Graph(*graph);
+            bestGraph = graph;
+            continue;
         }
 
         if (bipOrConn == -1) {
@@ -84,42 +85,51 @@ void doDFS(Graph &startGraph) {
             continue;
         }
 
+        if (graph->getEdgesCount() < graph->nodes ||
+            (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())) {
+            delete graph;
+            continue;
+        }
+
 //        cout << "::DFS::   Processing graph:" << endl;
 //        graph->print("::DFS::     ");
 //        cout << endl;
 
 
-        if (graph->getEdgesCount() >= graph->nodes &&
-            (!bestGraph || graph->getEdgesCount() > bestGraph->getEdgesCount())
-                ) {
-            // Generate neighboring graphs by removing one edge from this one.
-            // Start with the [startI, startJ] edge in the adjacency matrix.
-            int i = graph->startI;
-            int j = graph->startJ;
-            bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
-            do {
-                valid = incrementEdgeIndex(i, j, graph->nodes);
+        // Generate neighboring graphs by removing one edge from this one.
+        // Start with the [startI, startJ] edge in the adjacency matrix.
+        int i = graph->startI;
+        int j = graph->startJ;
+        bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
+        do {
+            valid = incrementEdgeIndex(i, j, graph->nodes);
 //                cout << "::DFS::      Trying edge index [" << i << "," << j << "]" << endl;
-                if (valid && graph->adjacency[i][j]) {
-                    // if [i,j] are valid indices and the edge they point at
-                    // are at is present -> create a new graph by removing the edge
-                    graphsCount++;
+            if (valid && graph->adjacency[i][j]) {
+                // if [i,j] are valid indices and the edge they point at
+                // are at is present -> create a new graph by removing the edge
+                graphsCount++;
 
-                    Graph *newGraph = new Graph(*graph);
-                    newGraph->setAdjacency(i, j, false);
-                    newGraph->setAdjacency(j, i, false);
-                    newGraph->startI = i;
-                    newGraph->startJ = j;
+                Graph *newGraph = new Graph(*graph);
+                newGraph->setAdjacency(i, j, false);
+                newGraph->setAdjacency(j, i, false);
+                newGraph->startI = i;
+                newGraph->startJ = j;
 
-                    // Uncomment following line if the walk-order does not matter
+                // Uncomment following line if the walk-order does not matter
+                if ((!bestGraph || newGraph->getEdgesCount() > bestGraph->getEdgesCount()) &&
+                    newGraph->isBipartiteOrConnected() != -1 &&
+                    newGraph->getEdgesCount() >= newGraph->nodes -1 ) {
                     graphStack.push(newGraph);
+                } else {
+                    delete newGraph;
+                }
 //                tempStack.push(newGraph);
 
 //                    cout << "::DFS::         Edge was present, creating a new graph." << endl;
 //                newGraph->print("::DFS::       ");
-                }
-            } while (valid);
-        }
+            }
+        } while (valid);
+
 
 //        while (!tempStack.empty()) {
 //            Graph *tempGraph = tempStack.top();
