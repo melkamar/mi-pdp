@@ -82,33 +82,37 @@ void doDFS(Graph &startGraph) {
 //        cout << endl;
 
 
-        // Generate neighboring graphs by removing one edge from this one.
-        // Start with the [startI, startJ] edge in the adjacency matrix.
-        int i = graph->startI;
-        int j = graph->startJ;
-        bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
-        do {
-            valid = incrementEdgeIndex(i, j, graph->nodes);
-            cout << "::DFS::      Trying edge index [" << i << "," << j << "]" << endl;
-            if (valid && graph->adjacency[i][j]) {
-                // if [i,j] are valid indices and the edge they point at
-                // are at is present -> create a new graph by removing the edge
-                graphsCount++;
+        if (graph->getEdgesCount() >= graph->nodes &&
+            (!bestGraph || graph->getEdgesCount() > bestGraph->getEdgesCount())
+                ) {
+            // Generate neighboring graphs by removing one edge from this one.
+            // Start with the [startI, startJ] edge in the adjacency matrix.
+            int i = graph->startI;
+            int j = graph->startJ;
+            bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
+            do {
+                valid = incrementEdgeIndex(i, j, graph->nodes);
+//                cout << "::DFS::      Trying edge index [" << i << "," << j << "]" << endl;
+                if (valid && graph->adjacency[i][j]) {
+                    // if [i,j] are valid indices and the edge they point at
+                    // are at is present -> create a new graph by removing the edge
+                    graphsCount++;
 
-                Graph *newGraph = new Graph(*graph);
-                newGraph->setAdjacency(i, j, false);
-                newGraph->setAdjacency(j, i, false);
-                newGraph->startI = i;
-                newGraph->startJ = j;
+                    Graph *newGraph = new Graph(*graph);
+                    newGraph->setAdjacency(i, j, false);
+                    newGraph->setAdjacency(j, i, false);
+                    newGraph->startI = i;
+                    newGraph->startJ = j;
 
-                // Uncomment following line if the walk-order does not matter
-                graphStack.push(newGraph);
+                    // Uncomment following line if the walk-order does not matter
+                    graphStack.push(newGraph);
 //                tempStack.push(newGraph);
 
-                cout << "::DFS::         Edge was present, creating a new graph." << endl;
+//                    cout << "::DFS::         Edge was present, creating a new graph." << endl;
 //                newGraph->print("::DFS::       ");
-            }
-        } while (valid);
+                }
+            } while (valid);
+        }
 
 //        while (!tempStack.empty()) {
 //            Graph *tempGraph = tempStack.top();
@@ -117,7 +121,7 @@ void doDFS(Graph &startGraph) {
 //        }
 
         delete graph;
-        cout << "::DFS::   iteration done. Adding graphs to stack." << endl;
+//        cout << "::DFS::   iteration done. Adding graphs to stack." << endl;
     }
     cout << "::DFS:: complete. Graphs seen: " << graphsCount;
     cout << endl;
@@ -169,9 +173,10 @@ int main(int argc, char *argv[]) {
 
     char *fn = argv[1];
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
-    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
+    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\7";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\a";
     cout << "Loading input from file " << fn << endl;
 
     Graph graph = loadProblem(fn);
