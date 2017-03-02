@@ -41,9 +41,25 @@ bool incrementEdgeIndex(int &i, int &j, int nodes) {
     return true;
 }
 
+void printBest(Graph *bestGraph) {
+    if (bestGraph) {
+        cout << "Best graph edges count: " << bestGraph->getEdgesCount() << endl;
+        bestGraph->print("BEST: ");
+    } else {
+        cout << "No best graph found. This should not happen!" << endl;
+        delete bestGraph;
+        exit(1);
+    }
+}
+
 void doDFS(Graph &startGraph) {
     int graphsCount = 1;
     Graph *bestGraph = NULL;
+
+    if (startGraph.isBipartite()) {
+        printBest(&startGraph);
+        return;
+    }
 
     stack<Graph *> graphStack;
     stack<Graph *> tempStack; // used for rearranging the order of graphs in the "real" stack
@@ -106,14 +122,7 @@ void doDFS(Graph &startGraph) {
     cout << "::DFS:: complete. Graphs seen: " << graphsCount;
     cout << endl;
 
-    if (bestGraph) {
-        cout << "Best graph edges count: " << bestGraph->getEdgesCount() << endl;
-        bestGraph->print("BEST: ");
-    } else {
-        cout << "No best graph found. This should not happen!" << endl;
-        delete bestGraph;
-        exit(1);
-    }
+    printBest(bestGraph);
 
     delete bestGraph;
 }
@@ -160,7 +169,7 @@ int main(int argc, char *argv[]) {
 
     char *fn = argv[1];
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
+    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\7";
     cout << "Loading input from file " << fn << endl;
