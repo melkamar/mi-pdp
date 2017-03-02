@@ -78,6 +78,8 @@ void doDFS(Graph &startGraph) {
         }
 
         if (bipOrConn == -1) {
+//            cout << "Graph is disjoint!" <<endl;
+//            graph->print("disjoint: ");
             delete graph;
             continue;
         }
@@ -179,7 +181,7 @@ int main(int argc, char *argv[]) {
     char *fn = argv[1];
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
-    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
+//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\7";
 //    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\a";
     cout << "Loading input from file " << fn << endl;

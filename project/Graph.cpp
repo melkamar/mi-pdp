@@ -164,6 +164,7 @@ short Graph::isBipartiteOrConnected() {
 //        nodesToColorQueue.push(i);
 //        nodesColors[i] = 0; // Set the default color for the initial node.
 //    }
+    nodesColors[0] = 0;
     nodesToColorQueue.push(0);
 
     while (!nodesToColorQueue.empty()) {
