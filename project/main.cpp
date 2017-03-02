@@ -56,7 +56,7 @@ void doDFS(Graph &startGraph) {
     int graphsCount = 1;
     Graph *bestGraph = NULL;
 
-    if (startGraph.isBipartite()) {
+    if (startGraph.isBipartiteOrConnected() == 1) {
         printBest(&startGraph);
         return;
     }
@@ -71,10 +71,15 @@ void doDFS(Graph &startGraph) {
         Graph *graph = graphStack.top();
         graphStack.pop();
 
-        if (graph->isBipartite() && (!bestGraph || graph->getEdgesCount() > bestGraph->getEdgesCount())) {
-            if (bestGraph)
-                delete bestGraph;
+        short bipOrConn = graph->isBipartiteOrConnected();
+        if (bipOrConn == 1 && (!bestGraph || graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+            if (bestGraph) delete bestGraph;
             bestGraph = new Graph(*graph);
+        }
+
+        if (bipOrConn == -1) {
+            delete graph;
+            continue;
         }
 
 //        cout << "::DFS::   Processing graph:" << endl;

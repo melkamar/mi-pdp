@@ -144,3 +144,56 @@ bool Graph::isBipartite() {
     return true;
 }
 
+/**
+ *
+ * @return -1 ~ not connected
+ *          0 ~ connected, not bipartite
+ *          1 ~ connected, bipartite
+ */
+short Graph::isBipartiteOrConnected() {
+    char nodesColors[nodes];
+    for (int i = 0; i < nodes; ++i) {
+        nodesColors[i] = -1;
+    }
+
+    queue<int> nodesToColorQueue;
+
+//    if (nodesColors[i] != -1)
+//        continue; // this node is already colored, do not add it to queue.
+//    else {
+//        nodesToColorQueue.push(i);
+//        nodesColors[i] = 0; // Set the default color for the initial node.
+//    }
+    nodesToColorQueue.push(0);
+
+    while (!nodesToColorQueue.empty()) {
+        int nodeIdx = nodesToColorQueue.front();
+        nodesToColorQueue.pop();
+
+        for (int j = 0; j < nodes; ++j) {
+            // color all neighbors to the opposite color
+            if (adjacency[nodeIdx][j] == 0)
+                continue;
+            else {
+                if (nodesColors[j] == -1) { // neighbor not colored yet -> color it
+                    nodesColors[j] = getOppositeColor(nodesColors[nodeIdx]);
+                    nodesToColorQueue.push(j);
+                } else if (nodesColors[j] == nodesColors[nodeIdx]) {
+                    // if my color is the same as neighbors, graph is not bipartite
+                    return 0;
+                }
+            }
+
+        }
+    }
+
+    // After the flooding, if any node is left not colored, it must be disjoint
+    for (int k = 0; k < nodes; ++k) {
+        if (nodesColors[k] == -1){
+            return -1;
+        }
+    }
+
+
+    return 1;
+}

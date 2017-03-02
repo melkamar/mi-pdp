@@ -18,6 +18,7 @@ public:
 
     bool isBipartite();
     int getEdgesCount();
+    short isBipartiteOrConnected();
 
     int nodes;
     int startI, startJ;
