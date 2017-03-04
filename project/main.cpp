@@ -67,19 +67,31 @@ void doDFS(Graph &startGraph) {
         graphStack.pop();
 
         short bipOrConn = graph->isBipartiteOrConnected();
-        if (bipOrConn == 1 && (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount()))) {
-            if (bestGraph) delete bestGraph;
-            bestGraph = graph;
-            continue;
+        switch (bipOrConn) {
+            case 1: // Is bipartite -> check if better than current. Anyway, do not process it further, because
+                // all subsequent graphs will only be worse.
+                if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+                    if (bestGraph) delete bestGraph;
+                    bestGraph = graph;
+                    cout << "New best graph edges: " << bestGraph->getEdgesCount() << endl;
+                }
+                continue;
+
+            case -1: // Is disjoint -> screw that.
+                delete graph;
+//                cout << "Disjoint graph in queue." << endl;
+                continue;
         }
 
-        if (bipOrConn == -1) {
+        // Graph is a tree (because it is not disjoint) -> do not remove further edges, it won't be better
+        if (graph->getEdgesCount() < graph->nodes) {
+//            cout << "case AAA: " << graph->getEdgesCount() << " X " << graph->nodes << endl;
             delete graph;
             continue;
         }
 
-        if (graph->getEdgesCount() < graph->nodes ||
-            (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())) {
+        // The same or better solution exists -> do not process further
+        if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount()) {
             delete graph;
             continue;
         }
@@ -92,32 +104,24 @@ void doDFS(Graph &startGraph) {
         bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
         do {
             valid = incrementEdgeIndex(i, j, graph->nodes);
-            if (valid && graph->isAdjacent(i,j)) {
+            if (valid && graph->isAdjacent(i, j)) {
                 // if [i,j] are valid indices and the edge they point at
                 // are at is present -> create a new graph by removing the edge
                 graphsCount++;
 
                 Graph *newGraph = new Graph(*graph);
                 newGraph->setAdjacency(i, j, false);
-                newGraph->setAdjacency(j, i, false);
                 newGraph->startI = i;
                 newGraph->startJ = j;
 
-                // Uncomment following line if the walk-order does not matter
-                if ((!bestGraph || newGraph->getEdgesCount() > bestGraph->getEdgesCount()) &&
-                    newGraph->isBipartiteOrConnected() != -1 &&
-                    newGraph->getEdgesCount() >= newGraph->nodes -1 ) {
-                    graphStack.push(newGraph);
-                } else {
-                    delete newGraph;
-                }
+                graphStack.push(newGraph);
             }
         } while (valid);
 
 
         delete graph;
     }
-//    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
+    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
     cout << endl;
 
     printBest(bestGraph);
