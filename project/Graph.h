@@ -16,12 +16,15 @@ public:
     void setAdjacency(int i, int j, bool value);
     void print(std::string prefix);
 
-    bool isBipartite();
     int getEdgesCount();
     short isBipartiteOrConnected();
+    bool isAdjacent(int i, int j);
 
     int nodes;
     int startI, startJ;
+    int edgesCount;
+
+private:
     bool **adjacency;
 };
 

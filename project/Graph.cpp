@@ -13,16 +13,21 @@ Graph::Graph(int nodes) {
     adjacency = new bool *[nodes];
     for (int i = 0; i < nodes; ++i) {
         adjacency[i] = new bool[nodes];
+        for (int j = 0; j < nodes; ++j) {
+            adjacency[i][j] = false;
+        }
     }
 
     startI = 0;
     startJ = 0;
+    edgesCount = 0;
 }
 
 Graph::Graph(const Graph &other) { // Copy constructor
     nodes = other.nodes;
     startI = other.startI;
     startJ = other.startJ;
+    edgesCount = other.edgesCount;
 
     adjacency = new bool *[nodes];
     for (int i = 0; i < nodes; ++i) {
@@ -41,18 +46,20 @@ Graph::~Graph() {
 }
 
 void Graph::setAdjacency(int i, int j, bool value) {
-    adjacency[i][j] = value;
+    if (adjacency[i][j] != value) {
+        adjacency[i][j] = value;
+        adjacency[j][i] = value;
+        if (value) edgesCount++;
+        else edgesCount--;
+    }
+}
+
+bool Graph::isAdjacent(int i, int j) {
+    return adjacency[i][j];
 }
 
 int Graph::getEdgesCount() {
-    int count = 0;
-    for (int i = 0; i < nodes; ++i) {
-        for (int j = 0; j < i; ++j) {
-            if (adjacency[i][j]) count++;
-        }
-    }
-
-    return count;
+    return edgesCount;
 }
 
 void Graph::print(string prefix) {
@@ -85,66 +92,9 @@ char getOppositeColor(char color) {
 }
 
 /**
- * Check if graph is bipartite (i.e. colorable with using two colors)
- *
- * All nodes are assigned one of three values:
- *  -1: initial value, node has not been colored yet.
- *   0: first color.
- *   1: second color.
- *
- * Algorithm:
- *  - Loop through all nodes.
- *    - If node is already colored, let it be, continue next loop. (It was already processed)
- *    - If node is not colored, add it to a (empty) queue, color it to 0.
- *
  *    - While there is a node in the queue, use it and check all of its neighbors:
  *      - If neighbor is not colored, color it to opposite color and add to queue
  *      - If neighbor is already colored, and the color is the same as current color, graph is not bipartite. Ret false.
- *
- *
- * @return True if graph is bipartite, false if not.
- */
-bool Graph::isBipartite() {
-    char nodesColors[nodes];
-    for (int i = 0; i < nodes; ++i) {
-        nodesColors[i] = -1;
-    }
-
-    queue<int> nodesToColorQueue;
-    for (int i = 0; i < nodes; ++i) { // This outer loop is necessary for disjoint graphs.
-        if (nodesColors[i] != -1)
-            continue; // this node is already colored, do not add it to queue.
-        else {
-            nodesToColorQueue.push(i);
-            nodesColors[i] = 0; // Set the default color for the initial node.
-        }
-
-        while (!nodesToColorQueue.empty()) {
-            int nodeIdx = nodesToColorQueue.front();
-            nodesToColorQueue.pop();
-
-            for (int j = 0; j < nodes; ++j) {
-                // color all neighbors to the opposite color
-                if (adjacency[nodeIdx][j] == 0)
-                    continue;
-                else {
-                    if (nodesColors[j] == -1) { // neighbor not colored yet -> color it
-                        nodesColors[j] = getOppositeColor(nodesColors[nodeIdx]);
-                        nodesToColorQueue.push(j);
-                    } else if (nodesColors[j] == nodesColors[nodeIdx]) {
-                        // if my color is the same as neighbors, graph is not bipartite
-                        return false;
-                    }
-                }
-
-            }
-        }
-    }
-
-    return true;
-}
-
-/**
  *
  * @return -1 ~ not connected
  *          0 ~ connected, not bipartite
@@ -158,12 +108,6 @@ short Graph::isBipartiteOrConnected() {
 
     queue<int> nodesToColorQueue;
 
-//    if (nodesColors[i] != -1)
-//        continue; // this node is already colored, do not add it to queue.
-//    else {
-//        nodesToColorQueue.push(i);
-//        nodesColors[i] = 0; // Set the default color for the initial node.
-//    }
     nodesColors[0] = 0;
     nodesToColorQueue.push(0);
 
@@ -190,7 +134,7 @@ short Graph::isBipartiteOrConnected() {
 
     // After the flooding, if any node is left not colored, it must be disjoint
     for (int k = 0; k < nodes; ++k) {
-        if (nodesColors[k] == -1){
+        if (nodesColors[k] == -1) {
             return -1;
         }
     }

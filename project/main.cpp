@@ -1,7 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <vector>
-#include <list>
 #include <stack>
 
 #include "Graph.h"
@@ -44,7 +42,7 @@ bool incrementEdgeIndex(int &i, int &j, int nodes) {
 void printBest(Graph *bestGraph) {
     if (bestGraph) {
         cout << "Best graph edges count: " << bestGraph->getEdgesCount() << endl;
-        bestGraph->print("BEST: ");
+//        bestGraph->print("BEST: ");
     } else {
         cout << "No best graph found. This should not happen!" << endl;
         delete bestGraph;
@@ -62,11 +60,8 @@ void doDFS(Graph &startGraph) {
     }
 
     stack<Graph *> graphStack;
-    stack<Graph *> tempStack; // used for rearranging the order of graphs in the "real" stack
-
     graphStack.push(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
 
-    cout << "::DFS:: starting." << endl;
     while (!graphStack.empty()) {
         Graph *graph = graphStack.top();
         graphStack.pop();
@@ -79,8 +74,6 @@ void doDFS(Graph &startGraph) {
         }
 
         if (bipOrConn == -1) {
-//            cout << "Graph is disjoint!" <<endl;
-//            graph->print("disjoint: ");
             delete graph;
             continue;
         }
@@ -91,10 +84,6 @@ void doDFS(Graph &startGraph) {
             continue;
         }
 
-//        cout << "::DFS::   Processing graph:" << endl;
-//        graph->print("::DFS::     ");
-//        cout << endl;
-
 
         // Generate neighboring graphs by removing one edge from this one.
         // Start with the [startI, startJ] edge in the adjacency matrix.
@@ -103,8 +92,7 @@ void doDFS(Graph &startGraph) {
         bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
         do {
             valid = incrementEdgeIndex(i, j, graph->nodes);
-//                cout << "::DFS::      Trying edge index [" << i << "," << j << "]" << endl;
-            if (valid && graph->adjacency[i][j]) {
+            if (valid && graph->isAdjacent(i,j)) {
                 // if [i,j] are valid indices and the edge they point at
                 // are at is present -> create a new graph by removing the edge
                 graphsCount++;
@@ -123,24 +111,13 @@ void doDFS(Graph &startGraph) {
                 } else {
                     delete newGraph;
                 }
-//                tempStack.push(newGraph);
-
-//                    cout << "::DFS::         Edge was present, creating a new graph." << endl;
-//                newGraph->print("::DFS::       ");
             }
         } while (valid);
 
 
-//        while (!tempStack.empty()) {
-//            Graph *tempGraph = tempStack.top();
-//            graphStack.push(tempGraph);
-//            tempStack.pop();
-//        }
-
         delete graph;
-//        cout << "::DFS::   iteration done. Adding graphs to stack." << endl;
     }
-    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
+//    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
     cout << endl;
 
     printBest(bestGraph);
@@ -198,9 +175,6 @@ int main(int argc, char *argv[]) {
 
     Graph graph = loadProblem(fn);
     doDFS(graph);
-
-//    cout << "Is bipartite? " << graph.isBipartite() << endl;
-//    cout << "Edges: " << graph.getEdgesCount() << endl;
 
     return 0;
 }
