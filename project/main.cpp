@@ -179,6 +179,7 @@ int main(int argc, char *argv[]) {
 
     Graph graph = loadProblem(fn);
     doDFS(graph);
+//    Graph graph1(graph);
 
     return 0;
 }

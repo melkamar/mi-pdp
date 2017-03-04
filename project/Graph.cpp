@@ -32,9 +32,7 @@ Graph::Graph(const Graph &other) { // Copy constructor
     adjacency = new bool *[nodes];
     for (int i = 0; i < nodes; ++i) {
         adjacency[i] = new bool[nodes];
-        for (int j = 0; j < nodes; ++j) {
-            adjacency[i][j] = other.adjacency[i][j];
-        }
+        copy(&other.adjacency[i][0], &other.adjacency[i][0] + other.nodes, &adjacency[i][0]);
     }
 }
 
@@ -62,7 +60,7 @@ int Graph::getEdgesCount() {
     return edgesCount;
 }
 
-void Graph::print(string prefix) {
+void Graph::print(string prefix) const {
     // print header
     cout << prefix << "     ";
     for (int j = 0; j < nodes; ++j) {

@@ -14,7 +14,7 @@ public:
     virtual ~Graph();
 
     void setAdjacency(int i, int j, bool value);
-    void print(std::string prefix);
+    void print(std::string prefix) const;
 
     int getEdgesCount();
     short isBipartiteOrConnected();
