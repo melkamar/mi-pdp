@@ -54,13 +54,16 @@ void doDFS(Graph &startGraph) {
     int graphsCount = 1;
     Graph *bestGraph = NULL;
 
-    switch (startGraph.isBipartiteOrConnected()) {
+    short bip = startGraph.isBipartiteOrConnected();
+    switch (bip) {
         case 1:
             printBest(&startGraph);
             return;
         case -1:
             cout << "Given source graph is disjoint! I refuse to process it." << endl;
             return;
+        default:
+            break;
     }
 
     stack<Graph *> graphStack;
@@ -74,6 +77,16 @@ void doDFS(Graph &startGraph) {
         // Start with the [startI, startJ] edge in the adjacency matrix.
         int i = graph->startI;
         int j = graph->startJ;
+
+        // Only begin loop if removing an edge from this graph will make sense
+        if (
+                (graph->getEdgesCount() < graph->nodes) ||
+                (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                ) { // Graph is already as sparse as possible, no reason to process it
+            delete graph;
+            continue;
+        }
+
         bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
         do {
             valid = incrementEdgeIndex(i, j, graph->nodes);
@@ -117,6 +130,9 @@ void doDFS(Graph &startGraph) {
                             break; // this graph already has the minimum possible edges and is not a solution -> skip searching
                         if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
                             break; // this graph is already worse than the found maximum -> skip searching
+
+                        cout << "Adding "<<graph->getEdgesCount() << endl;
+
                         Graph *newGraph = new Graph(*graph);
                         newGraph->startI = i;
                         newGraph->startJ = j;
