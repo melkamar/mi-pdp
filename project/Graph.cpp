@@ -8,6 +8,8 @@
 
 using namespace std;
 
+int Graph::copyConstrCalled = 0;
+
 Graph::Graph(int nodes) {
     this->nodes = nodes;
     adjacency = new bool *[nodes];
@@ -24,6 +26,7 @@ Graph::Graph(int nodes) {
 }
 
 Graph::Graph(const Graph &other) { // Copy constructor
+    copyConstrCalled++;
     nodes = other.nodes;
     startI = other.startI;
     startJ = other.startJ;
@@ -99,32 +102,39 @@ char getOppositeColor(char color) {
  *          1 ~ connected, bipartite
  */
 short Graph::isBipartiteOrConnected() {
+    bool nodesSeen[nodes];
     char nodesColors[nodes];
     for (int i = 0; i < nodes; ++i) {
         nodesColors[i] = -1;
+        nodesSeen[i] = false;
     }
 
-    queue<int> nodesToColorQueue;
+    bool bipartite = true;
+
+    queue<int> nodesQueue;
 
     nodesColors[0] = 0;
-    nodesToColorQueue.push(0);
+    nodesQueue.push(0);
 
-    while (!nodesToColorQueue.empty()) {
-        int nodeIdx = nodesToColorQueue.front();
-        nodesToColorQueue.pop();
+    while (!nodesQueue.empty()) {
+        int nodeIdx = nodesQueue.front();
+        nodesQueue.pop();
 
         for (int j = 0; j < nodes; ++j) {
             // color all neighbors to the opposite color
             if (adjacency[nodeIdx][j] == 0)
                 continue;
             else {
-                if (nodesColors[j] == -1) { // neighbor not colored yet -> color it
+                if (!nodesSeen[j]) { // neighbor not seen yet -> color it
+//                if (nodesColors[j] == -1) { // neighbor not colored yet -> color it
                     nodesColors[j] = getOppositeColor(nodesColors[nodeIdx]);
-                    nodesToColorQueue.push(j);
+                    nodesQueue.push(j);
                 } else if (nodesColors[j] == nodesColors[nodeIdx]) {
                     // if my color is the same as neighbors, graph is not bipartite
-                    return 0;
+                    bipartite = false;
                 }
+
+                nodesSeen[j] = true;
             }
 
         }
@@ -132,11 +142,11 @@ short Graph::isBipartiteOrConnected() {
 
     // After the flooding, if any node is left not colored, it must be disjoint
     for (int k = 0; k < nodes; ++k) {
-        if (nodesColors[k] == -1) {
+        if (!nodesSeen[k]) {
             return -1;
         }
     }
 
 
-    return 1;
+    return (bipartite ? 1 : 0);
 }

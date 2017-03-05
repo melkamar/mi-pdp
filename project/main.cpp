@@ -54,9 +54,13 @@ void doDFS(Graph &startGraph) {
     int graphsCount = 1;
     Graph *bestGraph = NULL;
 
-    if (startGraph.isBipartiteOrConnected() == 1) {
-        printBest(&startGraph);
-        return;
+    switch (startGraph.isBipartiteOrConnected()) {
+        case 1:
+            printBest(&startGraph);
+            return;
+        case -1:
+            cout << "Given source graph is disjoint! I refuse to process it." << endl;
+            return;
     }
 
     stack<Graph *> graphStack;
@@ -65,37 +69,6 @@ void doDFS(Graph &startGraph) {
     while (!graphStack.empty()) {
         Graph *graph = graphStack.top();
         graphStack.pop();
-
-        short bipOrConn = graph->isBipartiteOrConnected();
-        switch (bipOrConn) {
-            case 1: // Is bipartite -> check if better than current. Anyway, do not process it further, because
-                // all subsequent graphs will only be worse.
-                if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
-                    if (bestGraph) delete bestGraph;
-                    bestGraph = graph;
-                    cout << "New best graph edges: " << bestGraph->getEdgesCount() << endl;
-                }
-                continue;
-
-            case -1: // Is disjoint -> screw that.
-                delete graph;
-//                cout << "Disjoint graph in queue." << endl;
-                continue;
-        }
-
-        // Graph is a tree (because it is not disjoint) -> do not remove further edges, it won't be better
-        if (graph->getEdgesCount() < graph->nodes) {
-//            cout << "case AAA: " << graph->getEdgesCount() << " X " << graph->nodes << endl;
-            delete graph;
-            continue;
-        }
-
-        // The same or better solution exists -> do not process further
-        if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount()) {
-            delete graph;
-            continue;
-        }
-
 
         // Generate neighboring graphs by removing one edge from this one.
         // Start with the [startI, startJ] edge in the adjacency matrix.
@@ -109,12 +82,49 @@ void doDFS(Graph &startGraph) {
                 // are at is present -> create a new graph by removing the edge
                 graphsCount++;
 
-                Graph *newGraph = new Graph(*graph);
-                newGraph->setAdjacency(i, j, false);
-                newGraph->startI = i;
-                newGraph->startJ = j;
+                // Instead of cloning the Graph, test and see if it is valid using this graph first. (Revert this value at the end of loop)
+                graph->setAdjacency(i, j, false);
 
-                graphStack.push(newGraph);
+                // test
+                if (graph->getEdgesCount() < graph->nodes - 1) {
+                    graph->setAdjacency(i, j, true);
+                    continue; // this graph already has the minimum possible edges and is not a solution -> skip searching
+                }
+
+                if (bestGraph && graph->getEdgesCount() < bestGraph->getEdgesCount()) {
+                    // this graph is already worse than the found maximum -> skip searching
+                    graph->setAdjacency(i, j, true);
+                    continue;
+                }
+                // test
+
+                short bip = graph->isBipartiteOrConnected();
+                switch (bip) {
+                    case 1: // Is bipartite -> check if better than current. Anyway, do not process it further, because
+                        // all subsequent graphs will only be worse.
+                        if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+                            if (bestGraph) delete bestGraph;
+                            bestGraph = new Graph(*graph);
+                            cout << "2: New best graph edges: " << bestGraph->getEdgesCount() << endl;
+                        }
+                        break;
+
+                    case -1: // Is disjoint -> dont bother.
+                        break;
+
+                    case 0: // Is connected but not bipartite -> check if it makes sense to search further
+                        if (graph->getEdgesCount() < graph->nodes)
+                            break; // this graph already has the minimum possible edges and is not a solution -> skip searching
+                        if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                            break; // this graph is already worse than the found maximum -> skip searching
+                        Graph *newGraph = new Graph(*graph);
+                        newGraph->startI = i;
+                        newGraph->startJ = j;
+
+                        graphStack.push(newGraph);
+                }
+
+                graph->setAdjacency(i, j, true);
             }
         } while (valid);
 
@@ -179,6 +189,7 @@ int main(int argc, char *argv[]) {
 
     Graph graph = loadProblem(fn);
     doDFS(graph);
+    cout << "Copy constructor: " << Graph::copyConstrCalled << endl;
 //    Graph graph1(graph);
 
     return 0;

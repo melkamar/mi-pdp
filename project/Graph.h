@@ -24,6 +24,7 @@ public:
     int startI, startJ;
     int edgesCount;
 
+    static int copyConstrCalled;
 private:
     bool **adjacency;
 };
