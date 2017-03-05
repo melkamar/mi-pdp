@@ -73,11 +73,6 @@ void doDFS(Graph &startGraph) {
         Graph *graph = graphStack.top();
         graphStack.pop();
 
-        // Generate neighboring graphs by removing one edge from this one.
-        // Start with the [startI, startJ] edge in the adjacency matrix.
-        int i = graph->startI;
-        int j = graph->startJ;
-
         // Only begin loop if removing an edge from this graph will make sense
         if (
                 (graph->getEdgesCount() < graph->nodes) ||
@@ -87,21 +82,24 @@ void doDFS(Graph &startGraph) {
             continue;
         }
 
+        // Generate neighboring graphs by removing one edge from this one.
+        // Start with the [startI, startJ] edge in the adjacency matrix.
+        int i = graph->startI;
+        int j = graph->startJ;
+
         bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
         do {
             valid = incrementEdgeIndex(i, j, graph->nodes);
             if (valid && graph->isAdjacent(i, j)) {
-                // if [i,j] are valid indices and the edge they point at
-                // are at is present -> create a new graph by removing the edge
-                graphsCount++;
+                // if [i,j] are valid indices and the edge they point at is present -> create a new graph by removing the edge
+                graphsCount++; // temp - for stats
 
-                // Instead of cloning the Graph, test and see if it is valid using this graph first. (Revert this value at the end of loop)
+                // Instead of cloning the Graph straíght away, test and see if it is valid using this graph first. (Revert this value at the end of loop)
                 graph->setAdjacency(i, j, false);
 
-                // test
                 if (graph->getEdgesCount() < graph->nodes - 1) {
                     graph->setAdjacency(i, j, true);
-                    continue; // this graph already has the minimum possible edges and is not a solution -> skip searching
+                    continue; // this graph must be disjoint -> skip searching
                 }
 
                 if (bestGraph && graph->getEdgesCount() < bestGraph->getEdgesCount()) {
@@ -109,16 +107,15 @@ void doDFS(Graph &startGraph) {
                     graph->setAdjacency(i, j, true);
                     continue;
                 }
-                // test
 
                 short bip = graph->isBipartiteOrConnected();
                 switch (bip) {
-                    case 1: // Is bipartite -> check if better than current. Anyway, do not process it further, because
-                        // all subsequent graphs will only be worse.
+                    case 1: // Is bipartite -> check if better than current best.
+                        // Do not process it further in any case, because all subsequent graphs will only be worse.
                         if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
                             if (bestGraph) delete bestGraph;
                             bestGraph = new Graph(*graph);
-                            cout << "2: New best graph edges: " << bestGraph->getEdgesCount() << endl;
+                            cout << "New best graph edges count: " << bestGraph->getEdgesCount() << endl;
                         }
                         break;
 
@@ -131,7 +128,6 @@ void doDFS(Graph &startGraph) {
                         if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
                             break; // this graph is already worse than the found maximum -> skip searching
 
-                        cout << "Adding "<<graph->getEdgesCount() << endl;
 
                         Graph *newGraph = new Graph(*graph);
                         newGraph->startI = i;
@@ -142,11 +138,12 @@ void doDFS(Graph &startGraph) {
 
                 graph->setAdjacency(i, j, true);
             }
-        } while (valid);
+        } while (valid); // While there are edges to remove
 
 
         delete graph;
-    }
+    } // No graphs left in stack
+
     cout << "::DFS:: complete. Graphs seen: " << graphsCount;
     cout << endl;
 
@@ -196,17 +193,11 @@ int main(int argc, char *argv[]) {
     }
 
     char *fn = argv[1];
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\three";
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\bipartite\\disjoint";
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\small";
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\7";
-//    fn = "d:\\cvut-checkouted\\mi-pdp\\project\\input\\a";
     cout << "Loading input from file " << fn << endl;
 
     Graph graph = loadProblem(fn);
     doDFS(graph);
-    cout << "Copy constructor: " << Graph::copyConstrCalled << endl;
-//    Graph graph1(graph);
+    cout << "Copy constructor times called: " << Graph::copyConstrCalled << endl;
 
     return 0;
 }

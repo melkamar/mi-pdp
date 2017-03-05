@@ -126,7 +126,6 @@ short Graph::isBipartiteOrConnected() {
                 continue;
             else {
                 if (!nodesSeen[j]) { // neighbor not seen yet -> color it
-//                if (nodesColors[j] == -1) { // neighbor not colored yet -> color it
                     nodesColors[j] = getOppositeColor(nodesColors[nodeIdx]);
                     nodesQueue.push(j);
                 } else if (nodesColors[j] == nodesColors[nodeIdx]) {
@@ -149,4 +148,21 @@ short Graph::isBipartiteOrConnected() {
 
 
     return (bipartite ? 1 : 0);
+}
+
+/**
+ * Debug function, only usable on small graphs - print unique number based on graph adjacency matrix.
+ * @return
+ */
+uint64_t Graph::hash() {
+    uint64_t sum = 1;
+    for (int i = 0; i < nodes; ++i) {
+        for (int j = i + 1; j < nodes; ++j) {
+            if (adjacency[i][j]) {
+                sum += 1;
+            }
+            sum *= 2;
+        }
+    }
+    return sum;
 }

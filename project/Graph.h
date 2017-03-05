@@ -19,6 +19,7 @@ public:
     int getEdgesCount();
     short isBipartiteOrConnected();
     bool isAdjacent(int i, int j);
+    uint64_t hash();
 
     int nodes;
     int startI, startJ;
