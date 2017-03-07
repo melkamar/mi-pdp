@@ -3,6 +3,8 @@
 #include <stack>
 #include <queue>
 #include <iomanip>
+#include <string>
+#include <cstring>
 
 #include "Graph.h"
 #include "SearchStructure.h"
@@ -167,11 +169,15 @@ void doSearch(Graph &startGraph, SearchStructure &searchStructure) {
 }
 
 void doDFS(Graph &startGraph) {
+    cout << "Searching using DFS..." << endl;
+
     GraphStack graphStack;
     doSearch(startGraph, graphStack);
 }
 
 void doBFS(Graph &startGraph) {
+    cout << "Searching using BFS..." << endl;
+
     GraphQueue graphQueue;
     doSearch(startGraph, graphQueue);
 }
@@ -211,17 +217,24 @@ Graph loadProblem(string filename) {
 
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        cout << "Enter input file name." << endl;
+    if (argc < 2) {
+        cout << "Enter input file name. Optionally append --bfs flag to use BFS instead of DFS for searching." << endl;
         return 1;
+    }
+
+    bool bfs = false;
+    if (argc == 3){
+        if (strcmp(argv[2], "--bfs") == 0){
+            bfs = true;
+        }
     }
 
     char *fn = argv[1];
     cout << "Loading input from file " << fn << endl;
 
     Graph graph = loadProblem(fn);
-    doDFS(graph);
-//    doBFS(graph);
+    if (bfs) doBFS(graph);
+    else doDFS(graph);
 
     return 0;
 }
