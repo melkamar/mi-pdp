@@ -15,6 +15,8 @@ public:
 
     void setAdjacency(int i, int j, bool value);
     void print(std::string prefix) const;
+    void printBipartiteSets() const;
+    void printEdges() const;
 
     int getEdgesCount();
     short isBipartiteOrConnected();

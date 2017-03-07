@@ -166,3 +166,64 @@ uint64_t Graph::hash() {
     }
     return sum;
 }
+
+void Graph::printBipartiteSets() const {
+    char nodesColors[nodes];
+    for (int i = 0; i < nodes; ++i) {
+        nodesColors[i] = -1;
+    }
+
+//    vector<int> nodesA;
+//    vector<int> nodesB;
+    vector<int> coloredNodes[2];
+
+    queue<int> nodesQueue;
+
+    nodesColors[0] = 0;
+    nodesQueue.push(0);
+    coloredNodes[nodesColors[0]].push_back(0);
+
+    while (!nodesQueue.empty()) {
+        int nodeIdx = nodesQueue.front();
+        nodesQueue.pop();
+
+        for (int j = 0; j < nodes; ++j) {
+            // color all neighbors to the opposite color
+            if (adjacency[nodeIdx][j] == 0)
+                continue;
+            else {
+                if (nodesColors[j] == -1) { // neighbor not seen yet -> color it
+                    nodesColors[j] = getOppositeColor(nodesColors[nodeIdx]);
+
+                    coloredNodes[nodesColors[j]].push_back(j);
+
+                    nodesQueue.push(j);
+                } else if (nodesColors[j] == nodesColors[nodeIdx]) {
+                    // if my color is the same as neighbors, graph is not bipartite
+                    cout << "Graph requested to print is not bipartite!" << endl;
+                    return;
+                }
+            }
+        }
+    }
+
+    cout << "Bipartite subsets: " << endl;
+
+    for (int i = 0; i < 2; ++i) {
+        cout << " " << i << ") ";
+        for (auto it = coloredNodes[i].begin(); it < coloredNodes[i].end(); ++it)
+            cout << *it << "  ";
+        cout << endl;
+    }
+}
+
+void Graph::printEdges() const {
+    cout << "Edges in bipartite subgraph: " << endl;
+    for (int i = 0; i < nodes; ++i) {
+        for (int j = i + 1; j < nodes; ++j) {
+            if (adjacency[i][j]) {
+                cout << "  " << i << " <-> " << j << endl;
+            }
+        }
+    }
+}
