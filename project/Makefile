@@ -1,6 +1,5 @@
 # Declaration of variables
-CC = g++
-CC_FLAGS = -g -w -std=c++11
+CXX_FLAGS = -g -w -std=c++11
 
 # File names
 EXEC = solver
@@ -9,11 +8,11 @@ OBJECTS = $(SOURCES:.cpp=.o)
 
 # Main target
 $(EXEC): $(OBJECTS)
-		$(CC) $(OBJECTS) -o $(EXEC)
+		$(CXX) $(OBJECTS) -o $(EXEC)
 
 # To obtain object files
 %.o: %.cpp
-		$(CC) -c $(CC_FLAGS) $< -o $@
+		$(CXX) -c $(CXX_FLAGS) $< -o $@
 
 # To remove generated files
 clean:
