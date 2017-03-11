@@ -23,7 +23,7 @@ script:
   - make
 
 after_success: |
-  if [ -n "$GITHUB_API_KEY" ]; then
+  if [ -n "$GITHUB_API" ]; then
     mkdir melkamar-pdp
     cp project/*.cpp project/*.h project/Makefile melkamar-pdp/
     rm -f melkamar-pdp.zip
