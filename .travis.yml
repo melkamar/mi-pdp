@@ -37,5 +37,5 @@ after_success: |
 #    cd "$TRAVIS_BUILD_DIR"
     git push
   else
-
+    echo "No github api key found"
   fi
