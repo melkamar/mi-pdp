@@ -16,8 +16,10 @@ addons:
 
 install:
 - export CXX="g++-5"
+- pushd project
+- make
+- popd
 
 # Build steps
 script:
-  - cd project
-  - make
+- ./project/test.sh
