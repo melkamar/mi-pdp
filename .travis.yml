@@ -22,4 +22,6 @@ install:
 
 # Build steps
 script:
-- ./project/test.sh
+- pushd project
+- ./test.sh
+- popd project
