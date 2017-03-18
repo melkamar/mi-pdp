@@ -1,5 +1,5 @@
 # Declaration of variables
-CXX_FLAGS = -g -w -std=c++11 -fopenmp -O3
+CXX_FLAGS = -g -w -std=c++11 -O3
 
 # File names
 EXEC = solver
@@ -8,7 +8,7 @@ OBJECTS = $(SOURCES:.cpp=.o)
 
 # Main target
 $(EXEC): $(OBJECTS)
-		$(CXX) -fopenmp -O3 $(OBJECTS) -o $(EXEC)
+		$(CXX) -O3 $(OBJECTS) -o $(EXEC)
 
 # To obtain object files
 %.o: %.cpp

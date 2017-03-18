@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <string>
 #include <cstring>
+
 #include <omp.h>
 
 #include "Graph.h"
@@ -108,8 +109,15 @@ void doSearchRec(Graph *graph) {
                             if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
                                 if (bestGraph) delete bestGraph;
                                 bestGraph = new Graph(*graph);
+
+                                #if defined(_OPENMP)
+                                    int threadNum = omp_get_thread_num();
+                                #else
+                                    int threadNum = 0;
+                                #endif
+
                                 cout << "New best graph edges count: " << bestGraph->getEdgesCount()
-                                     << ". Found by thread " << omp_get_thread_num() << endl;
+                                     << ". Found by thread " << threadNum << endl;
                             }
                         }
                     }
@@ -209,7 +217,7 @@ Graph loadProblem(string filename) {
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        cout << "Enter input file name. Optionally append --bfs flag to use BFS instead of DFS for searching." << endl;
+        cout << "Enter input file name." << endl;
         return 1;
     }
 
