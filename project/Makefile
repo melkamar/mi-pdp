@@ -1,5 +1,5 @@
 # Declaration of variables
-CXX_FLAGS = -g -w -std=c++11 -fopenmp
+CXX_FLAGS = -g -w -std=c++11 -fopenmp -O3
 
 # File names
 EXEC = solver
