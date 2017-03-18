@@ -3,13 +3,14 @@
 function testSolver {
     fn="$1"
     expectedEdges="$2"
-    output=$(./solver "input/official/$fn")
+    executable="$3"
+    output=$("./$executable" "input/official/$fn")
 
     regex='==\s*([[:digit:]]*)\s+edges\s*=='
     if [[ $output =~ $regex ]]; then
 	edgesFound="${BASH_REMATCH[1]}"
         if [[ $edgesFound -eq $expectedEdges ]]; then
-            echo "OK: $fn"
+            echo "OK: $fn - $executable"
         else
             echo "FAIL: $fn"
             echo "Expected: $expectedEdges"
