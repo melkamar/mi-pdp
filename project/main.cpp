@@ -9,11 +9,10 @@
 #include <omp.h>
 
 #include "Graph.h"
-#include "SearchStructure.h"
-#include "GraphStack.h"
-#include "GraphQueue.h"
 
 using namespace std;
+
+int MIN_EDGES_SOLUTION = 0;
 
 
 /**
@@ -63,8 +62,12 @@ void printBest(Graph *bestGraph) {
 }
 
 Graph *bestGraph = NULL;
+int states = 0;
 
-void doSearchRec(Graph *graph) {
+void doSearchRecOMP(Graph *graph) {
+    #pragma omp atomic
+    states++;
+
     // Only begin loop if removing an edge from this graph will make sense
     if (
             (graph->getEdgesCount() < graph->nodes) ||
@@ -106,14 +109,15 @@ void doSearchRec(Graph *graph) {
                     if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
                         #pragma omp critical
                         {
+                            cout << "critical" << endl;
                             if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
                                 if (bestGraph) delete bestGraph;
                                 bestGraph = new Graph(*graph);
 
                                 #if defined(_OPENMP)
-                                    int threadNum = omp_get_thread_num();
+                                int threadNum = omp_get_thread_num();
                                 #else
-                                    int threadNum = 0;
+                                int threadNum = 0;
                                 #endif
 
                                 cout << "New best graph edges count: " << bestGraph->getEdgesCount()
@@ -137,8 +141,15 @@ void doSearchRec(Graph *graph) {
                     newGraph->startI = i;
                     newGraph->startJ = j;
 
-                #pragma omp task
-                    doSearchRec(newGraph);
+                    int threshold = 2;
+                    if (newGraph->edgesCount - MIN_EDGES_SOLUTION < threshold ||
+                        (bestGraph && newGraph->edgesCount - bestGraph->getEdgesCount() < threshold)) {
+//                        cout << "New graph edges: " << newGraph->edgesCount << " -> sequential finish" << endl;
+                        doSearchRecOMP(newGraph);
+                    } else {
+                        #pragma omp task
+                        doSearchRecOMP(newGraph);
+                    }
                     break;
             }
 
@@ -149,6 +160,92 @@ void doSearchRec(Graph *graph) {
 
     delete graph;
 }
+
+//void doSearchRecSEQ(Graph *graph) {
+//    // Only begin loop if removing an edge from this graph will make sense
+//    if (
+//            (graph->getEdgesCount() < graph->nodes) ||
+//            (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+//            ) { // Graph is already as sparse as possible, no reason to process it
+//        delete graph;
+//        return;
+//    }
+//
+//    // Generate neighboring graphs by removing one edge from this one.
+//    // Start with the [startI, startJ] edge in the adjacency matrix.
+//    int i = graph->startI;
+//    int j = graph->startJ;
+//
+//    bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
+//    do {
+//        valid = incrementEdgeIndex(i, j, graph->nodes);
+//        if (valid && graph->isAdjacent(i, j)) {
+//            // if [i,j] are valid indices and the edge they point at is present -> create a new graph by removing the edge
+//
+//            // Instead of cloning the Graph straíght away, test and see if it is valid using this graph first. (Revert this value at the end of loop)
+//            graph->setAdjacency(i, j, false);
+//
+//            if (graph->getEdgesCount() < graph->nodes - 1) {
+//                graph->setAdjacency(i, j, true);
+//                continue; // this graph must be disjoint -> skip searching
+//            }
+//
+//            if (bestGraph && graph->getEdgesCount() < bestGraph->getEdgesCount()) {
+//                // this graph is already worse than the found maximum -> skip searching
+//                graph->setAdjacency(i, j, true);
+//                continue;
+//            }
+//
+//            short bip = graph->isBipartiteOrConnected();
+//            switch (bip) {
+//                case 1: // Is bipartite -> check if better than current best.
+//                    // Do not process it further in any case, because all subsequent graphs will only be worse.
+//                    if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+//                        #pragma omp critical
+//                        {
+//                            cout << "critical" << endl;
+//                            if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+//                                if (bestGraph) delete bestGraph;
+//                                bestGraph = new Graph(*graph);
+//
+//                                #if defined(_OPENMP)
+//                                int threadNum = omp_get_thread_num();
+//                                #else
+//                                int threadNum = 0;
+//                                #endif
+//
+//                                cout << "New best graph edges count: " << bestGraph->getEdgesCount()
+//                                     << ". Found by thread " << threadNum << endl;
+//                            }
+//                        }
+//                    }
+//                    break;
+//
+//                case -1: // Is disjoint -> dont bother.
+//                    break;
+//
+//                case 0: // Is connected but not bipartite -> check if it makes sense to search further
+//                    if (graph->getEdgesCount() < graph->nodes)
+//                        break; // this graph already has the minimum possible edges and is not a solution -> skip searching
+//                    if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+//                        break; // this graph is already worse than the found maximum -> skip searching
+//
+//
+//                    Graph *newGraph = new Graph(*graph);
+//                    newGraph->startI = i;
+//                    newGraph->startJ = j;
+//
+//                    doSearchRecSEQ(newGraph);
+//                    break;
+//            }
+//
+//            graph->setAdjacency(i, j, true);
+//        }
+//    } while (valid); // While there are edges to remove
+//
+//
+//    delete graph;
+//}
 
 /**
  * Generic tree search algorithm. May be DFS or BFS based on searchStructure (stack or queue, respectively).
@@ -169,13 +266,17 @@ void doSearch(Graph &startGraph) {
             break;
     }
 
-    #pragma omp parallel
+    MIN_EDGES_SOLUTION = startGraph.nodes - 1;
+
+    #pragma omp parallel shared(states)
     {
         #pragma omp single
         {
-            doSearchRec(new Graph(startGraph));
+            doSearchRecOMP(new Graph(startGraph));
         }
     }
+
+    cout << "states visited: "<<states <<endl;
 
     printBest(bestGraph);
     delete bestGraph;
