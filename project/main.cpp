@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include <omp.h>
+#include <queue>
 
 #include "Graph.h"
 
@@ -132,7 +133,7 @@ void doSearchRecOMP(Graph *graph) {
                     newGraph->startI = i;
                     newGraph->startJ = j;
 
-                    int threshold = 2;
+                    int threshold = 3;
                     if (newGraph->edgesCount - MIN_EDGES_SOLUTION < threshold ||
                         (bestGraph && newGraph->edgesCount - bestGraph->getEdgesCount() < threshold)) {
                         doSearchRecOMP(newGraph);
@@ -157,6 +158,123 @@ void doSearchRecOMP(Graph *graph) {
  * @param startGraph Initial search state.
  * @param searchStructure Concrete implementation of SearchStructure container.
  */
+queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
+    queue<Graph *> *resultQ = new queue<Graph *>();
+    resultQ->push(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
+
+    short bip = startGraph.isBipartiteOrConnected();
+    switch (bip) {
+        case 1:
+//            printBest(&startGraph);
+            return resultQ;
+        case -1:
+            cout << "Given source graph is disjoint! I refuse to process it." << endl;
+            return NULL;
+        default:
+            break;
+    }
+
+    while (!resultQ->empty() && resultQ->size() < requestedSize) {
+        Graph *graph = resultQ->front();
+        resultQ->pop();
+
+//        cout << "Edges: " << setw(3) << graph->getEdgesCount() << endl;
+
+        // Only begin loop if removing an edge from this graph will make sense
+        if (
+                (graph->getEdgesCount() < graph->nodes) ||
+                (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                ) { // Graph is already as sparse as possible, no reason to process it
+            delete graph;
+            continue;
+        }
+
+        // Generate neighboring graphs by removing one edge from this one.
+        // Start with the [startI, startJ] edge in the adjacency matrix.
+        int i = graph->startI;
+        int j = graph->startJ;
+
+        bool valid; // If true, the obtained [i, j] indices point at a valid ID of edge to remove
+        do {
+            valid = incrementEdgeIndex(i, j, graph->nodes);
+            if (valid && graph->isAdjacent(i, j)) {
+                // if [i,j] are valid indices and the edge they point at is present -> create a new graph by removing the edge
+
+                // Instead of cloning the Graph straíght away, test and see if it is valid using this graph first. (Revert this value at the end of loop)
+                graph->setAdjacency(i, j, false);
+
+                if (graph->getEdgesCount() < graph->nodes - 1) {
+                    graph->setAdjacency(i, j, true);
+                    continue; // this graph must be disjoint -> skip searching
+                }
+
+                if (bestGraph && graph->getEdgesCount() < bestGraph->getEdgesCount()) {
+                    // this graph is already worse than the found maximum -> skip searching
+                    graph->setAdjacency(i, j, true);
+                    continue;
+                }
+
+                short bip = graph->isBipartiteOrConnected();
+                bool breakloop = false;
+                switch (bip) {
+                    case 1: // Is bipartite -> check if better than current best.
+                        // Do not process it further in any case, because all subsequent graphs will only be worse.
+                        if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+                            if (bestGraph) delete bestGraph;
+                            bestGraph = new Graph(*graph);
+//                            cout << "New best graph edges count: " << bestGraph->getEdgesCount() << endl;
+                        }
+                        break;
+
+                    case -1: // Is disjoint -> dont bother.
+                        break;
+
+                    case 0: // Is connected but not bipartite -> check if it makes sense to search further
+                        if (graph->getEdgesCount() < graph->nodes)
+                            break; // this graph already has the minimum possible edges and is not a solution -> skip searching
+                        if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                            break; // this graph is already worse than the found maximum -> skip searching
+
+
+                        Graph *newGraph = new Graph(*graph);
+                        newGraph->startI = i;
+                        newGraph->startJ = j;
+                        cout << "Adding graph. Removing edge [" << i << "," << j << "]" << endl;
+                        resultQ->push(newGraph);
+
+                        // TODO this should be working, but not tested.
+                        if (resultQ->size() >= requestedSize) {  // already have enough initial states, stop generating more.
+                            graph->setAdjacency(i, j, true);
+                            graph->startI = i;
+                            graph->startJ = j;
+                            resultQ->push(graph);
+                            breakloop = true;
+                            break;
+                        }
+                }
+
+                if (breakloop) break;
+
+                graph->setAdjacency(i, j, true);
+            }
+        } while (valid); // While there are edges to remove
+
+
+//        delete graph;
+    } // No graphs left in stack
+
+    return resultQ;
+
+//    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
+    cout << endl;
+}
+
+/**
+ * Generic tree search algorithm. May be DFS or BFS based on searchStructure (stack or queue, respectively).
+ *
+ * @param startGraph Initial search state.
+ * @param searchStructure Concrete implementation of SearchStructure container.
+ */
 void doSearch(Graph &startGraph) {
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
@@ -172,16 +290,31 @@ void doSearch(Graph &startGraph) {
 
     MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
-    #pragma omp parallel shared(bestGraph)
-    {
-        #pragma omp single
-        {
-            doSearchRecOMP(new Graph(startGraph));
-        }
-    }
+    cout << "Initial: ["<<startGraph.startI<<", "<<startGraph.startJ<<"]"<<endl;
+    startGraph.print("Initial");
 
-    printBest(bestGraph);
-    delete bestGraph;
+    // BFS to obtain a certain number of tasks
+    queue<Graph *> *initialGraphs = doBFS(startGraph, 2);
+
+    cout << "Initial graphs size: " << initialGraphs->size() << endl;
+    int size = initialGraphs->size();
+    for (int i = 0; i < size; i++) {
+        Graph* graph =initialGraphs->front();
+        cout << "Initial: ["<<graph->startI<<", "<<graph->startJ<<"]"<<endl;
+        graph->print(to_string(i)+"  ");
+
+        initialGraphs->pop();
+    }
+//    #pragma omp parallel shared(bestGraph)
+//    {
+//        #pragma omp single
+//        {
+//            doSearchRecOMP(new Graph(startGraph));
+//        }
+//    }
+//
+//    printBest(bestGraph);
+//    delete bestGraph;
 }
 
 Graph loadProblem(string filename) {
