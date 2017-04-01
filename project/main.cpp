@@ -243,7 +243,7 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
                         resultQ->push(newGraph);
 
                         // TODO this should be working, but not tested.
-                        if (resultQ->size() >= requestedSize) {  // already have enough initial states, stop generating more.
+                        if (resultQ->size()+1 >= requestedSize) {  // already have enough initial states, stop generating more.
                             graph->setAdjacency(i, j, true);
                             graph->startI = i;
                             graph->startJ = j;
@@ -294,7 +294,7 @@ void doSearch(Graph &startGraph) {
     startGraph.print("Initial");
 
     // BFS to obtain a certain number of tasks
-    queue<Graph *> *initialGraphs = doBFS(startGraph, 2);
+    queue<Graph *> *initialGraphs = doBFS(startGraph, 4);
 
     cout << "Initial graphs size: " << initialGraphs->size() << endl;
     int size = initialGraphs->size();
