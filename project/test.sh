@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
-
 function testSolver {
     fn="$1"
     expectedEdges="$2"
     executable="$3"
+    echo "Testing: $executable $fn"
+
     output=$("./$executable" "input/official/$fn")
 
     regex='==\s*([[:digit:]]*)\s+edges\s*=='

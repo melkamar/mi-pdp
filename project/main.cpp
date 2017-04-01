@@ -133,14 +133,7 @@ void doSearchRecOMP(Graph *graph) {
                     newGraph->startI = i;
                     newGraph->startJ = j;
 
-                    int threshold = 3;
-                    if (newGraph->edgesCount - MIN_EDGES_SOLUTION < threshold ||
-                        (bestGraph && newGraph->edgesCount - bestGraph->getEdgesCount() < threshold)) {
-                        doSearchRecOMP(newGraph);
-                    } else {
-                        #pragma omp task
-                        doSearchRecOMP(newGraph);
-                    }
+                    doSearchRecOMP(newGraph);
                     break;
             }
 
@@ -243,7 +236,8 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
                         resultQ->push(newGraph);
 
                         // TODO this should be working, but not tested.
-                        if (resultQ->size()+1 >= requestedSize) {  // already have enough initial states, stop generating more.
+                        if (resultQ->size() + 1 >=
+                            requestedSize) {  // already have enough initial states, stop generating more.
                             graph->setAdjacency(i, j, true);
                             graph->startI = i;
                             graph->startJ = j;
@@ -290,30 +284,24 @@ void doSearch(Graph &startGraph) {
 
     MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
-    cout << "Initial: ["<<startGraph.startI<<", "<<startGraph.startJ<<"]"<<endl;
+    cout << "Initial: [" << startGraph.startI << ", " << startGraph.startJ << "]" << endl;
     startGraph.print("Initial");
 
     // BFS to obtain a certain number of tasks
-    queue<Graph *> *initialGraphs = doBFS(startGraph, 4);
+    queue<Graph *> *initialGraphs = doBFS(startGraph, 10);
 
     cout << "Initial graphs size: " << initialGraphs->size() << endl;
     int size = initialGraphs->size();
+    #pragma omp parallel for
     for (int i = 0; i < size; i++) {
-        Graph* graph =initialGraphs->front();
-        cout << "Initial: ["<<graph->startI<<", "<<graph->startJ<<"]"<<endl;
-        graph->print(to_string(i)+"  ");
-
+//        cout << "Starting i="<<i<<" ==========================================" <<endl;
+        Graph *graph = initialGraphs->front();
         initialGraphs->pop();
+//        graph->print(to_string(i) + "  ");
+        doSearchRecOMP(graph);
     }
-//    #pragma omp parallel shared(bestGraph)
-//    {
-//        #pragma omp single
-//        {
-//            doSearchRecOMP(new Graph(startGraph));
-//        }
-//    }
-//
-//    printBest(bestGraph);
+
+    printBest(bestGraph);
 //    delete bestGraph;
 }
 
