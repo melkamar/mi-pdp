@@ -4,6 +4,7 @@
 
 #include <omp.h>
 #include <queue>
+#include <thread>
 
 #include "Graph.h"
 
@@ -66,6 +67,7 @@ void doSearchRecOMP(Graph *graph) {
             (graph->getEdgesCount() < graph->nodes) ||
             (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
             ) { // Graph is already as sparse as possible, no reason to process it
+        cout << "1" << endl;
         delete graph;
         return;
     }
@@ -146,19 +148,18 @@ void doSearchRecOMP(Graph *graph) {
 }
 
 /**
- * Generic tree search algorithm. May be DFS or BFS based on searchStructure (stack or queue, respectively).
+ * Generate a queue of initial states using BFS.
  *
  * @param startGraph Initial search state.
- * @param searchStructure Concrete implementation of SearchStructure container.
+ * @param requestedSize Number of graphs to generate.
  */
-queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
-    queue<Graph *> *resultQ = new queue<Graph *>();
-    resultQ->push(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
+deque<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
+    deque<Graph *> *resultQ = new deque<Graph *>();
+    resultQ->push_back(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
 
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
-//            printBest(&startGraph);
             return resultQ;
         case -1:
             cout << "Given source graph is disjoint! I refuse to process it." << endl;
@@ -169,9 +170,7 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
 
     while (!resultQ->empty() && resultQ->size() < requestedSize) {
         Graph *graph = resultQ->front();
-        resultQ->pop();
-
-//        cout << "Edges: " << setw(3) << graph->getEdgesCount() << endl;
+        resultQ->pop_front();
 
         // Only begin loop if removing an edge from this graph will make sense
         if (
@@ -215,7 +214,6 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
                         if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
                             if (bestGraph) delete bestGraph;
                             bestGraph = new Graph(*graph);
-//                            cout << "New best graph edges count: " << bestGraph->getEdgesCount() << endl;
                         }
                         break;
 
@@ -233,16 +231,16 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
                         newGraph->startI = i;
                         newGraph->startJ = j;
                         cout << "Adding graph. Removing edge [" << i << "," << j << "]" << endl;
-                        resultQ->push(newGraph);
+                        resultQ->push_back(newGraph);
 
-                        // TODO this should be working, but not tested.
-                        if (resultQ->size() + 1 >=
-                            requestedSize) {  // already have enough initial states, stop generating more.
+                        if (resultQ->size() + 1 >= requestedSize) {
+                            // already have enough initial states, stop generating more and add currently processed
+                            // graph to it too (there may be remaining graphs to generate from it
                             graph->setAdjacency(i, j, true);
                             graph->startI = i;
                             graph->startJ = j;
-                            resultQ->push(graph);
-                            breakloop = true;
+                            resultQ->push_back(new Graph(*graph));
+                            breakloop = true; // Need to set a flag, because break only breaks the switch statement
                             break;
                         }
                 }
@@ -253,14 +251,10 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
             }
         } while (valid); // While there are edges to remove
 
-
-//        delete graph;
+        delete graph;
     } // No graphs left in stack
 
     return resultQ;
-
-//    cout << "::DFS:: complete. Graphs seen: " << graphsCount;
-    cout << endl;
 }
 
 /**
@@ -270,6 +264,14 @@ queue<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
  * @param searchStructure Concrete implementation of SearchStructure container.
  */
 void doSearch(Graph &startGraph) {
+    #if defined(_OPENMP)
+    int threadCount = omp_get_num_threads();
+    unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
+    cout << "Running using OpenMP, "<<concurentThreadsSupported<<" threads." << endl;
+    #else
+    cout << "Running sequentially, single thread." << endl;
+    #endif
+
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
@@ -284,20 +286,18 @@ void doSearch(Graph &startGraph) {
 
     MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
-    cout << "Initial: [" << startGraph.startI << ", " << startGraph.startJ << "]" << endl;
-    startGraph.print("Initial");
-
     // BFS to obtain a certain number of tasks
-    queue<Graph *> *initialGraphs = doBFS(startGraph, 10);
+//    deque<Graph *> *initialGraphsQ = doBFS(startGraph, 20);
+    deque<Graph *> *initialGraphs = doBFS(startGraph, 20);
 
-    cout << "Initial graphs size: " << initialGraphs->size() << endl;
-    int size = initialGraphs->size();
+
     #pragma omp parallel for
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < initialGraphs->size(); i++) {
 //        cout << "Starting i="<<i<<" ==========================================" <<endl;
-        Graph *graph = initialGraphs->front();
-        initialGraphs->pop();
+//        Graph *graph = initialGraphs->front();
+//        initialGraphs->pop();
 //        graph->print(to_string(i) + "  ");
+        Graph *graph = (*initialGraphs)[i];
         doSearchRecOMP(graph);
     }
 
