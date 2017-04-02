@@ -45,6 +45,18 @@ bool incrementEdgeIndex(int &i, int &j, int nodes) {
     return true;
 }
 
+void printInit(int nodes, unsigned threadCount, string fn) {
+    cout << "=========================================" << endl;
+    cout << "Graph file:  " << fn << endl;
+    cout << "Graph nodes: " << nodes << endl;
+    #if defined(_OPENMP)
+    cout << "Running MULTITHREADED with " << threadCount << " threads." << endl;
+    #else
+    cout << "Running SINGLETHREADED." << endl;
+    #endif
+    cout << "=========================================" << endl;
+}
+
 void printBest(Graph *bestGraph) {
     if (bestGraph) {
         cout << "Best bipartite graph edge count: " << endl;
@@ -61,13 +73,17 @@ void printBest(Graph *bestGraph) {
 
 Graph *bestGraph = NULL;
 
-void doSearchRecOMP(Graph *graph) {
+
+/**
+ * Sequential search of graph state space using DFS.
+ * @param graph
+ */
+void doSearchDFS(Graph *graph) {
     // Only begin loop if removing an edge from this graph will make sense
     if (
             (graph->getEdgesCount() < graph->nodes) ||
             (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
             ) { // Graph is already as sparse as possible, no reason to process it
-        cout << "1" << endl;
         delete graph;
         return;
     }
@@ -135,7 +151,7 @@ void doSearchRecOMP(Graph *graph) {
                     newGraph->startI = i;
                     newGraph->startJ = j;
 
-                    doSearchRecOMP(newGraph);
+                    doSearchDFS(newGraph);
                     break;
             }
 
@@ -153,7 +169,7 @@ void doSearchRecOMP(Graph *graph) {
  * @param startGraph Initial search state.
  * @param requestedSize Number of graphs to generate.
  */
-deque<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
+deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize) {
     deque<Graph *> *resultQ = new deque<Graph *>();
     resultQ->push_back(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
 
@@ -230,7 +246,6 @@ deque<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
                         Graph *newGraph = new Graph(*graph);
                         newGraph->startI = i;
                         newGraph->startJ = j;
-                        cout << "Adding graph. Removing edge [" << i << "," << j << "]" << endl;
                         resultQ->push_back(newGraph);
 
                         if (resultQ->size() + 1 >= requestedSize) {
@@ -263,15 +278,7 @@ deque<Graph *> *doBFS(Graph &startGraph, int requestedSize) {
  * @param startGraph Initial search state.
  * @param searchStructure Concrete implementation of SearchStructure container.
  */
-void doSearch(Graph &startGraph) {
-    #if defined(_OPENMP)
-    int threadCount = omp_get_num_threads();
-    unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
-    cout << "Running using OpenMP, "<<concurentThreadsSupported<<" threads." << endl;
-    #else
-    cout << "Running sequentially, single thread." << endl;
-    #endif
-
+void doSearch(Graph &startGraph, unsigned threadCount) {
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
@@ -287,22 +294,17 @@ void doSearch(Graph &startGraph) {
     MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
     // BFS to obtain a certain number of tasks
-//    deque<Graph *> *initialGraphsQ = doBFS(startGraph, 20);
-    deque<Graph *> *initialGraphs = doBFS(startGraph, 20);
+    deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 5);
 
 
     #pragma omp parallel for
     for (int i = 0; i < initialGraphs->size(); i++) {
-//        cout << "Starting i="<<i<<" ==========================================" <<endl;
-//        Graph *graph = initialGraphs->front();
-//        initialGraphs->pop();
-//        graph->print(to_string(i) + "  ");
         Graph *graph = (*initialGraphs)[i];
-        doSearchRecOMP(graph);
+        doSearchDFS(graph);
     }
 
     printBest(bestGraph);
-//    delete bestGraph;
+    delete bestGraph;
 }
 
 Graph loadProblem(string filename) {
@@ -312,7 +314,6 @@ Graph loadProblem(string filename) {
     if (f.is_open()) {
         int nodesCount;
         f >> nodesCount;
-        cout << "Nodes: " << nodesCount << endl;
 
         Graph graph(nodesCount);
 
@@ -346,10 +347,18 @@ int main(int argc, char *argv[]) {
     }
 
     char *fn = argv[1];
-    cout << "Loading input from file " << fn << endl;
 
     Graph graph = loadProblem(fn);
-    doSearch(graph);
+
+
+    unsigned threadCount = 1;
+    #if defined(_OPENMP)
+    threadCount = std::thread::hardware_concurrency();
+    #endif
+
+    printInit(graph.nodes, threadCount, fn);
+
+    doSearch(graph, threadCount);
 
     return 0;
 }
