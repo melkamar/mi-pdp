@@ -27,3 +27,36 @@ OK graph10_6.txt: 57650 ms   (multithreaded)
 OK graph12_5.txt: 5840 ms   (multithreaded)
 OK graph18_4.txt: 500690 ms   (multithreaded)
 OK graph14_5.txt: 591010 ms   (multithreaded)
+
+----------------------
+DATA PARALLELISM BELOW
+
+OK graph10_5.txt [ms]:
+     - sequential: 970
+     - parallel:   250
+     - speedup:    288.00 %
+
+OK graph17_3.txt [ms]:
+     - sequential: 0
+     - parallel:   10
+     - speedup:    -100.00 %
+
+OK graph20_3.txt [ms]:
+     - sequential: 110
+     - parallel:   30
+     - speedup:    266.00 %
+
+OK graph25_3.txt [ms]:
+     - sequential: 110
+     - parallel:   40
+     - speedup:    175.00 %
+
+OK graph14_4.txt [ms]:
+     - sequential: 1630
+     - parallel:   1420
+     - speedup:    14.00 %
+
+OK graph10_6.txt: 70650 ms   (multithreaded)
+OK graph12_5.txt: 7910 ms   (multithreaded)
+OK graph18_4.txt: 21660 ms   (multithreaded)
+OK graph14_5.txt: 457820 ms   (multithreaded)

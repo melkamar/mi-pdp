@@ -294,11 +294,11 @@ void doSearch(Graph &startGraph, unsigned threadCount) {
     MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
     // BFS to obtain a certain number of tasks
-    deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 5);
+    deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 7);
 
-
-    #pragma omp parallel for
-    for (int i = 0; i < initialGraphs->size(); i++) {
+    int i;
+    #pragma omp parallel for private(i) num_threads(threadCount)
+    for (i = 0; i < initialGraphs->size(); i++) {
         Graph *graph = (*initialGraphs)[i];
         doSearchDFS(graph);
     }
