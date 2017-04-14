@@ -12,6 +12,7 @@
 using namespace std;
 
 int MIN_EDGES_SOLUTION = 0;
+int PROCESS_RANK = -1;
 
 
 /**
@@ -335,6 +336,38 @@ Graph loadProblem(string filename) {
     }
 }
 
+const int MESSAGE_TAG_NEED_WORK = 1;
+const int MESSAGE_TAG_NEW_BEST = 2;
+const int MESSAGE_TAG_WORK = 3;
+
+void myMPI_SendGraph(Graph *graph, int targetProcessId) {
+    int intBuffer[4];
+    if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
+    else intBuffer[0] = -1;
+
+    intBuffer[1] = graph->nodes;
+    intBuffer[2] = graph->startI;
+    intBuffer[3] = graph->startJ;
+
+    MPI_Send(&intBuffer, 4, MPI_INT, targetProcessId, MESSAGE_TAG_WORK, MPI_COMM_WORLD);
+
+    for (int i = 0; i < graph->nodes; i++) {
+        MPI_Send(graph->adjacency[i], graph->nodes, MPI_CXX_BOOL, targetProcessId, MESSAGE_TAG_WORK, MPI_COMM_WORLD);
+    }
+}
+
+/*
+ * Message format:
+ * WORK:
+ *  - int*
+ *    - [0] - best edges count so far
+ *    - [1] - number of nodes
+ *    - [2] - startI
+ *    - [3] - startJ
+ *  - bool* - 1st row of matrix (size=number of nodes)
+ *  - bool* - 2nd row of matrix
+ *  - ....
+ */
 void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
     cout << "I am MASTER" << endl;
 
@@ -358,37 +391,78 @@ void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCou
     MPI_Status status;
 
     // In a loop listen for slaves' messages
-//    while (!initialGraphs->empty()){
-//        MPI_Recv(&buffer, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-//    }
+    while (!initialGraphs->empty()) {
+        MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        switch (status.MPI_TAG) {
+            case MESSAGE_TAG_NEED_WORK: {
+                int source = status.MPI_SOURCE;
+                cout << source << " wants work" << endl;
+                MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-    for (int i = 0; i < processCount - 1; i++) {
-        MPI_Recv(&buffer, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-        cout << "MASTER: Received " << buffer << endl;
+                Graph *graph = initialGraphs->front();
+                initialGraphs->pop_front();
+                myMPI_SendGraph(graph, source);
+                break;
+            }
+            default:
+                throw new invalid_argument("Unknown tag for Master: " + status.MPI_TAG);
+        }
     }
+
+//    for (int i = 0; i < processCount - 1; i++) {
+//        MPI_Recv(&buffer, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+//        cout << "MASTER: Received " << buffer << endl;
+//    }
 }
 
-void MPI_ProcessSlave(int rank) {
-    cout << "I am SLAVE" << endl;
-    int buffer = rank;
+Graph *myMPI_ReceiveWork() {
+    int intBuffer[4];
 
-    MPI_Send(&buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    MPI_Recv(&intBuffer, 4, MPI_INT, 0, MESSAGE_TAG_WORK, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    int best_edges = intBuffer[0];
+    int graph_nodes = intBuffer[1];
+    int graph_startI = intBuffer[2];
+    int graph_startJ = intBuffer[3];
+
+    bool **adjacency = new bool *[graph_nodes];
+    for (int i = 0; i < graph_nodes; ++i) {
+        adjacency[i] = new bool[graph_nodes];
+    }
+
+    for (int i = 0; i < graph_nodes; i++) { // receive as many lines as there are nodes
+        MPI_Recv(adjacency[i], graph_nodes, MPI_CXX_BOOL, 0, MESSAGE_TAG_WORK, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    Graph *graph = new Graph(graph_nodes, adjacency);
+
+    cout << "SLAVE " << PROCESS_RANK << " Got work. Best: " << best_edges << " | nodes: " << graph_nodes
+         << " | start: [" << graph_startI
+         << "," << graph_startJ << "]" << endl;
+    graph->print("SLAVE " +  to_string(PROCESS_RANK)+": ");
+}
+
+void MPI_ProcessSlave() {
+    cout << "I am SLAVE" << endl;
+    int buffer = PROCESS_RANK;
+
+    MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEED_WORK, MPI_COMM_WORLD);
+    myMPI_ReceiveWork();
 }
 
 void runMPI(int argc, char **argv, Graph &graph) {
-    int my_rank;
     int processCount;
 
     MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+    MPI_Comm_rank(MPI_COMM_WORLD, &PROCESS_RANK);
 
     /* Number of processes */
     MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
-    if (my_rank == 0) {
+    if (PROCESS_RANK == 0) {
         MPI_ProcessMaster(graph, processCount, processCount * 20);
     } else {
-        MPI_ProcessSlave(my_rank);
+        MPI_ProcessSlave();
     }
 
     MPI_Finalize();

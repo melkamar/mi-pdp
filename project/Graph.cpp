@@ -25,6 +25,15 @@ Graph::Graph(int nodes) {
     edgesCount = 0;
 }
 
+
+Graph::Graph(int nodes, bool **adjacency) {
+    this->nodes = nodes;
+    startI = 0;
+    startJ = 0;
+    edgesCount = 0;
+    this->adjacency = adjacency;
+}
+
 Graph::Graph(const Graph &other) { // Copy constructor
     copyConstrCalled++;
     nodes = other.nodes;
@@ -227,3 +236,4 @@ void Graph::printEdges() const {
         }
     }
 }
+

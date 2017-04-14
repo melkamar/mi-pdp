@@ -10,6 +10,7 @@
 class Graph {
 public:
     Graph(int nodes);
+    Graph(int nodes, bool** adjacency);
     Graph(const Graph &other);
     virtual ~Graph();
 
@@ -28,7 +29,6 @@ public:
     int edgesCount;
 
     static int copyConstrCalled;
-private:
     bool **adjacency;
 };
 
