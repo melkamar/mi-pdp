@@ -28,3 +28,8 @@ větší, než buffer, tak se ořízne a zmizi! To nechceš.
 - Master by měl asynchronně čekat na zprávy, když žádný nejsou, tak pracovat. Takže využít `Iprobe()`.
 
 - Vymyslet jak rozumně posílat update nejlepšího řešení (pošle to master všem? slave co to našel všem?)
+
+### Spuštění programu
+1. Instalace MPI: `sudo apt install libopenmpi-dev`
+2. Úprava Makefile - místo `g++` použít `mpiCC` (flagy a parametry zůstávají stejné)
+3. Spuštění programu: `mpirun -n <počet-procesů> ./program input/graph.txt`

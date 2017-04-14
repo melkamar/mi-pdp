@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "Graph.h"
+#include <mpi.h>
 
 using namespace std;
 
@@ -272,13 +273,8 @@ deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize) {
     return resultQ;
 }
 
-/**
- * Generic tree search algorithm. May be DFS or BFS based on searchStructure (stack or queue, respectively).
- *
- * @param startGraph Initial search state.
- * @param searchStructure Concrete implementation of SearchStructure container.
- */
-void doSearch(Graph &startGraph, unsigned threadCount) {
+
+void doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
@@ -339,6 +335,64 @@ Graph loadProblem(string filename) {
     }
 }
 
+void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
+    cout << "I am MASTER" << endl;
+
+    short bip = startGraph.isBipartiteOrConnected();
+    switch (bip) {
+        case 1:
+            printBest(&startGraph);
+            return;
+        case -1:
+            cout << "Given source graph is disjoint! I refuse to process it." << endl;
+            return;
+        default:
+            break;
+    }
+
+    MIN_EDGES_SOLUTION = startGraph.nodes - 1;
+
+    deque<Graph *> *initialGraphs = generateInitialStates(startGraph, initialGraphsCount);
+
+    int buffer;
+    MPI_Status status;
+
+    // In a loop listen for slaves' messages
+//    while (!initialGraphs->empty()){
+//        MPI_Recv(&buffer, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+//    }
+
+    for (int i = 0; i < processCount - 1; i++) {
+        MPI_Recv(&buffer, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+        cout << "MASTER: Received " << buffer << endl;
+    }
+}
+
+void MPI_ProcessSlave(int rank) {
+    cout << "I am SLAVE" << endl;
+    int buffer = rank;
+
+    MPI_Send(&buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+}
+
+void runMPI(int argc, char **argv, Graph &graph) {
+    int my_rank;
+    int processCount;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+    /* Number of processes */
+    MPI_Comm_size(MPI_COMM_WORLD, &processCount);
+
+    if (my_rank == 0) {
+        MPI_ProcessMaster(graph, processCount, processCount * 20);
+    } else {
+        MPI_ProcessSlave(my_rank);
+    }
+
+    MPI_Finalize();
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -358,7 +412,9 @@ int main(int argc, char *argv[]) {
 
     printInit(graph.nodes, threadCount, fn);
 
-    doSearch(graph, threadCount);
+    runMPI(argc, argv, graph);
+
+//    doSearchOpenMP(graph, threadCount);
 
     return 0;
 }

@@ -1,6 +1,7 @@
 # Declaration of variables
 CXX_FLAGS = -g -w -std=c++11 -fopenmp -O3
 CXX_FLAGS_SEQ = -g -w -std=c++11 -O3
+CXX = mpiCC
 
 # File names
 EXEC = solver
