@@ -76,21 +76,27 @@ void printBest(Graph *bestGraph) {
 
 Graph *bestGraph = NULL;
 
+void doLog(string txt) {
+    //cout << txt << endl;
+}
 
 /**
  * Sequential search of graph state space using DFS.
  * @param graph
  */
 void doSearchDFS(Graph *graph) {
+    doLog("doSearchDFS 1");
     // Only begin loop if removing an edge from this graph will make sense
     if (
             (graph->getEdgesCount() < graph->nodes) ||
             (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
             ) { // Graph is already as sparse as possible, no reason to process it
+        doLog("doSearchDFS 2");
         delete graph;
         return;
     }
 
+    doLog("doSearchDFS 2");
     // Generate neighboring graphs by removing one edge from this one.
     // Start with the [startI, startJ] edge in the adjacency matrix.
     int i = graph->startI;
@@ -143,15 +149,17 @@ void doSearchDFS(Graph *graph) {
                     break;
 
                 case -1: // Is disjoint -> dont bother.
+                    doLog("doSearchDFS 3");
                     break;
 
                 case 0: // Is connected but not bipartite -> check if it makes sense to search further
+                    doLog("doSearchDFS 4");
                     if (graph->getEdgesCount() < graph->nodes)
                         break; // this graph already has the minimum possible edges and is not a solution -> skip searching
                     if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
                         break; // this graph is already worse than the found maximum -> skip searching
 
-
+                    doLog("doSearchDFS 5");
                     Graph *newGraph = new Graph(*graph);
                     newGraph->startI = i;
                     newGraph->startJ = j;
@@ -175,12 +183,15 @@ void doSearchDFS(Graph *graph) {
  * @param requestedSize Number of graphs to generate.
  */
 deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize) {
+    doLog("generateInitialStates 1");
     deque<Graph *> *resultQ = new deque<Graph *>();
     resultQ->push_back(new Graph(startGraph)); // make a copy of the graph so that it can be safely deleted during dfs
+    doLog("generateInitialStates 2");
 
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
+            doLog("generateInitialStates 3");
             return resultQ;
         case -1:
             cout << "Given source graph is disjoint! I refuse to process it." << endl;
@@ -199,6 +210,7 @@ deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize) {
                 (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
                 ) { // Graph is already as sparse as possible, no reason to process it
             delete graph;
+            doLog("generateInitialStates 4");
             continue;
         }
 
@@ -248,12 +260,14 @@ deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize) {
                             break; // this graph is already worse than the found maximum -> skip searching
 
 
+                        doLog("generateInitialStates 6");
                         Graph *newGraph = new Graph(*graph);
                         newGraph->startI = i;
                         newGraph->startJ = j;
                         resultQ->push_back(newGraph);
 
                         if (resultQ->size() + 1 >= requestedSize) {
+                            doLog("generateInitialStates 7");
                             // already have enough initial states, stop generating more and add currently processed
                             // graph to it too (there may be remaining graphs to generate from it
                             graph->setAdjacency(i, j, true);
@@ -278,7 +292,7 @@ deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize) {
 }
 
 
-Graph* doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
+Graph *doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
@@ -293,9 +307,13 @@ Graph* doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
 
     MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
+    doLog("doSearchOpenMP 0 - genstats:");
+//    startGraph.print("doSearchOpenMP 0 ");
+
     // BFS to obtain a certain number of tasks
     deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 7);
 
+    doLog("doSearchOpenMP 1 - graphs: "+to_string(initialGraphs->size()));
     int i;
     #pragma omp parallel for private(i) num_threads(threadCount)
     for (i = 0; i < initialGraphs->size(); i++) {
@@ -303,7 +321,9 @@ Graph* doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
         doSearchDFS(graph);
     }
 
-    printBest(bestGraph);
+    doLog("doSearchOpenMP 2");
+
+//    printBest(bestGraph);
     return bestGraph;
 //    delete bestGraph;
 }
@@ -345,16 +365,19 @@ Graph loadProblem(string filename) {
 #define MESSAGE_TAG_WORK 3 // the message payload contains a graph to be solved by a slave
 #define MESSAGE_TAG_NO_MORE_WORK 4 // there is no more work for a slave to be done
 
+#define MPI_GRAPH_INT_PARAMS_COUNT 5
+
 void myMPI_SendGraph(Graph *graph, int targetProcessId, int tag) {
-    int intBuffer[4];
+    int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
     if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
     else intBuffer[0] = -1;
 
     intBuffer[1] = graph->nodes;
     intBuffer[2] = graph->startI;
     intBuffer[3] = graph->startJ;
+    intBuffer[4] = graph->edgesCount;
 
-    MPI_Send(&intBuffer, 4, MPI_INT, targetProcessId, tag, MPI_COMM_WORLD);
+    MPI_Send(&intBuffer, MPI_GRAPH_INT_PARAMS_COUNT, MPI_INT, targetProcessId, tag, MPI_COMM_WORLD);
 
     for (int i = 0; i < graph->nodes; i++) {
         MPI_Send(graph->adjacency[i], graph->nodes, MPI_CXX_BOOL, targetProcessId, tag, MPI_COMM_WORLD);
@@ -362,14 +385,14 @@ void myMPI_SendGraph(Graph *graph, int targetProcessId, int tag) {
 }
 
 Graph *myMPI_ReceiveGraph(int source) {
-    int intBuffer[4];
+    int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
 
     // Receive ints - edges of the best graph etc.
     MPI_Status status;
-    MPI_Recv(&intBuffer, 4, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    MPI_Recv(&intBuffer, MPI_GRAPH_INT_PARAMS_COUNT, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
     int wantedTag = status.MPI_TAG;
-    switch (status.MPI_TAG){
+    switch (status.MPI_TAG) {
         case MESSAGE_TAG_WORK:
             // ok. got new work as requested.
             break;
@@ -390,6 +413,7 @@ Graph *myMPI_ReceiveGraph(int source) {
     int graph_nodes = intBuffer[1]; // Number of nodes of the graph being sent
     int graph_startI = intBuffer[2]; // startI coordinate of the graph being sent
     int graph_startJ = intBuffer[3]; // startJ coordinate of the graph being sent
+    int graph_edgesCount = intBuffer[4]; // edges count of the graph being sent (to save processing power on calculating it)
 
     bool **adjacency = new bool *[graph_nodes];
     for (int i = 0; i < graph_nodes; ++i) {
@@ -400,14 +424,22 @@ Graph *myMPI_ReceiveGraph(int source) {
         MPI_Recv(adjacency[i], graph_nodes, MPI_CXX_BOOL, source, wantedTag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
-    Graph *graph = new Graph(graph_nodes, adjacency);
+    Graph *graph = new Graph(graph_nodes, adjacency, graph_startI, graph_startJ, graph_edgesCount);
 
-    cout << "SLAVE " << PROCESS_RANK << " Got work. Best: " << best_edges << " | nodes: " << graph_nodes
+    cout << "SLAVE  |" << PROCESS_RANK << " Received graph. Best: " << best_edges << " | nodes: " << graph_nodes
          << " | start: [" << graph_startI
          << "," << graph_startJ << "]" << endl;
-    graph->print("SLAVE " + to_string(PROCESS_RANK) + ": ");
+//    graph->print("SLAVE " + to_string(PROCESS_RANK) + ": ");
 
     return graph;
+}
+
+void logMaster(string text) {
+    cout << "MASTER | " << text << endl;
+}
+
+void logSlave(string text) {
+    cout << "SLAVE  | " << text << endl;
 }
 
 /*
@@ -423,8 +455,6 @@ Graph *myMPI_ReceiveGraph(int source) {
  *  - ....
  */
 void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
-    cout << "I am MASTER" << endl;
-
     short bip = startGraph.isBipartiteOrConnected();
     switch (bip) {
         case 1:
@@ -450,7 +480,7 @@ void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCou
         switch (status.MPI_TAG) {
             case MESSAGE_TAG_NEED_WORK: { // Slave needs a new thing to work on
                 int source = status.MPI_SOURCE;
-                cout << source << " wants work" << endl;
+                logMaster(to_string(source) + " wants work");
                 MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
                 Graph *graph = initialGraphs->front();
@@ -462,11 +492,11 @@ void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCou
             case MESSAGE_TAG_NEW_BEST: { // Slave found a new best solution, update it
                 int source = status.MPI_SOURCE;
                 MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                cout << source << " found new best: " << buffer << endl;
+                logMaster(to_string(source) + " found new best. Edges: " + to_string(buffer));
 
-                if (bestGraph->getEdgesCount() < buffer){
+                if (bestGraph->getEdgesCount() < buffer) {
                     // Graph being received really is better than what I currently have
-                    Graph * graph = myMPI_ReceiveGraph(source);
+                    Graph *graph = myMPI_ReceiveGraph(source);
                     delete bestGraph;
                     bestGraph = graph;
                 }
@@ -486,15 +516,15 @@ void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCou
 
 
 void MPI_ProcessSlave() {
-    cout << "I am SLAVE" << endl;
     int buffer = PROCESS_RANK;
 
     while (true) {
         MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEED_WORK, MPI_COMM_WORLD);
         Graph *startGraph = myMPI_ReceiveGraph(0);
 
-        if (!startGraph){
+        if (!startGraph) {
             // No more work to be done, stop the loop
+            logSlave("!startGraph break");
             break;
         }
 
@@ -504,13 +534,16 @@ void MPI_ProcessSlave() {
         threadCount = std::thread::hardware_concurrency();
         #endif
 
-
+        doLog("MPI_ProcessSlave 1");
         betterGraphFound = false; // flag will be true if doSearchOpenMP finds a better result
-        Graph * bestFound = doSearchOpenMP(*startGraph, threadCount);
+        Graph *bestFound = doSearchOpenMP(*startGraph, threadCount);
+        doLog("MPI_ProcessSlave 2 - " + (bestFound == NULL ? "NULL" : to_string(bestFound->getEdgesCount())));
 
-        if (betterGraphFound){
+        if (betterGraphFound) {
+            doLog("MPI_ProcessSlave 3");
             buffer = bestFound->edgesCount;
             MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEW_BEST, MPI_COMM_WORLD);
+            doLog("MPI_ProcessSlave 4");
         }
     }
 }

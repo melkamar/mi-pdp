@@ -26,12 +26,12 @@ Graph::Graph(int nodes) {
 }
 
 
-Graph::Graph(int nodes, bool **adjacency) {
+Graph::Graph(int nodes, bool **adjacency, int startI, int startJ, int edgesCount) {
     this->nodes = nodes;
-    startI = 0;
-    startJ = 0;
-    edgesCount = 0;
+    this->startI = startI;
+    this->startJ = startJ;
     this->adjacency = adjacency;
+    this->edgesCount = edgesCount;
 }
 
 Graph::Graph(const Graph &other) { // Copy constructor
@@ -88,6 +88,8 @@ void Graph::print(string prefix) const {
         }
         cout << endl;
     }
+
+    cout << prefix << " START ["<<startI<<","<<startJ<<"]"<<endl;
 }
 
 /**
