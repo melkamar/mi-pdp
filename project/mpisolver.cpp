@@ -3,10 +3,8 @@
 //
 
 #include <iostream>
-#include <fstream>
 #include <iomanip>
 
-#include <omp.h>
 #include <queue>
 #include <thread>
 
@@ -14,23 +12,29 @@
 #include "ompsolver.h"
 #include <mpi.h>
 #include "mpisolver.h"
-#include "Graph.h"
 
 using namespace std;
 
 namespace mpisolver {
 
-#define MESSAGE_TAG_NEED_WORK 1 // the slave is requesting new work
-#define MESSAGE_TAG_NEW_BEST 2 // the message payload contains a newly found best result's edges count
-#define MESSAGE_TAG_WORK 3 // the message payload contains a graph to be solved by a slave
-#define MESSAGE_TAG_NO_MORE_WORK 4 // there is no more work for a slave to be done
-#define MPI_GRAPH_INT_PARAMS_COUNT 5
+    #define MESSAGE_TAG_NEED_WORK 1 // the slave is requesting new work
+    #define MESSAGE_TAG_NEW_BEST 2 // the message payload contains a newly found best result's edges count
+    #define MESSAGE_TAG_WORK 3 // the message payload contains a graph to be solved by a slave
+    #define MESSAGE_TAG_NO_MORE_WORK 4 // there is no more work for a slave to be done
+    #define MPI_GRAPH_INT_PARAMS_COUNT 5
 
     Graph *bestGraph = NULL;
     int PROCESS_RANK = -1;
     int MIN_EDGES_SOLUTION = 0;
 
-    void runMPI(int argc, char **argv, Graph &graph) {
+    /**
+     * Entrypoint for MPI Master and Slave processes.
+     * @param argc
+     * @param argv
+     * @param graph Starting Graph.
+     * @param graphsPerProcess Number of initial graphs to generate for each process.
+     */
+    void runMPI(int argc, char **argv, Graph &graph, int graphsPerProcess) {
         int processCount;
 
         MPI_Init(&argc, &argv);
@@ -40,7 +44,7 @@ namespace mpisolver {
         MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
         if (PROCESS_RANK == 0) {
-            MPI_ProcessMaster(graph, processCount, processCount * 20);
+            MPI_ProcessMaster(graph, processCount, processCount * graphsPerProcess);
 
             printBest(bestGraph);
         } else {
@@ -62,8 +66,6 @@ namespace mpisolver {
         logMPI("   ... sending graph to " + to_string(targetProcessId) + " with tag " + to_string(tag) + " and hash " +
                to_string(graph->hash()));
 
-//    usleep(1000000);
-
         int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
         if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
         else intBuffer[0] = -1;
@@ -78,7 +80,6 @@ namespace mpisolver {
         for (int i = 0; i < graph->nodes; i++) {
             MPI_Send(graph->adjacency[i], graph->nodes, MPI_CXX_BOOL, targetProcessId, tag, MPI_COMM_WORLD);
         }
-//    usleep(1000000);
         logMPI("   ... finished sending graph.");
     }
 

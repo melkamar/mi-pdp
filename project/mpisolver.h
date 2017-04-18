@@ -8,7 +8,7 @@
 #include "Graph.h"
 
 namespace mpisolver {
-    void runMPI(int argc, char **argv, Graph &graph);
+    void runMPI(int argc, char **argv, Graph &graph, int graphsPerProcess);
     void logMPI(std::string text);
     void myMPI_SendGraph(Graph *graph, int targetProcessId, int tag);
     Graph *myMPI_ReceiveGraph(int source);
