@@ -175,6 +175,10 @@ uint64_t Graph::hash() {
             sum *= 2;
         }
     }
+    sum *= 2;
+    sum += startI;
+    sum *= 2;
+    sum += startJ;
     return sum;
 }
 

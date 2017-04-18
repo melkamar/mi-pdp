@@ -16,6 +16,16 @@ int PROCESS_RANK = -1;
 
 bool betterGraphFound = false;
 
+
+void logMPI(string text) {
+    if (PROCESS_RANK == 0) {
+        cout << "MASTER  | " << text << endl;
+    } else {
+//        cout << "SLAVE " << PROCESS_RANK << " | " << text << endl;
+    }
+}
+
+
 /**
  * Increment the j-index with regard to the edges matrix. If j overflows, increment i and start from the diagonal.
  *
@@ -313,7 +323,7 @@ Graph *doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
     // BFS to obtain a certain number of tasks
     deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 7);
 
-    doLog("doSearchOpenMP 1 - graphs: "+to_string(initialGraphs->size()));
+    doLog("doSearchOpenMP 1 - graphs: " + to_string(initialGraphs->size()));
     int i;
     #pragma omp parallel for private(i) num_threads(threadCount)
     for (i = 0; i < initialGraphs->size(); i++) {
@@ -394,18 +404,22 @@ Graph *myMPI_ReceiveGraph(int source) {
     int wantedTag = status.MPI_TAG;
     switch (status.MPI_TAG) {
         case MESSAGE_TAG_WORK:
+            logMPI("ReceiveGraph: New work");
             // ok. got new work as requested.
             break;
 
         case MESSAGE_TAG_NO_MORE_WORK:
             // No more work is to be done. Stop working.
+            logMPI("ReceiveGraph: No more work!");
             return NULL;
 
         case MESSAGE_TAG_NEW_BEST:
             // A new best graph is being sent.
+            logMPI("ReceiveGraph: New best result");
             break;
         default:
-            throw new invalid_argument("Unknown tag for Slave#ReceiveWork: " + status.MPI_TAG);
+            cout << "Unknown tag ReceiveGraph:: " << status.MPI_TAG << endl;
+            throw new invalid_argument("Unknown tag for ReceiveGraph: " + status.MPI_TAG);
     }
 
 
@@ -425,21 +439,18 @@ Graph *myMPI_ReceiveGraph(int source) {
     }
 
     Graph *graph = new Graph(graph_nodes, adjacency, graph_startI, graph_startJ, graph_edgesCount);
+    if (graph == NULL) {
+        logMPI("ReceiveGraph: Finished receiving graph - NULL");
+    } else {
+        logMPI("ReceiveGraph: Finished receiving graph - not null");
+    }
 
-    cout << "SLAVE  |" << PROCESS_RANK << " Received graph. Best: " << best_edges << " | nodes: " << graph_nodes
-         << " | start: [" << graph_startI
-         << "," << graph_startJ << "]" << endl;
+//    cout << "SLAVE  |" << PROCESS_RANK << " Received graph. Best: " << best_edges << " | nodes: " << graph_nodes
+//         << " | start: [" << graph_startI
+//         << "," << graph_startJ << "]" << endl;
 //    graph->print("SLAVE " + to_string(PROCESS_RANK) + ": ");
 
     return graph;
-}
-
-void logMaster(string text) {
-    cout << "MASTER | " << text << endl;
-}
-
-void logSlave(string text) {
-    cout << "SLAVE  | " << text << endl;
 }
 
 /*
@@ -480,30 +491,42 @@ void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCou
         switch (status.MPI_TAG) {
             case MESSAGE_TAG_NEED_WORK: { // Slave needs a new thing to work on
                 int source = status.MPI_SOURCE;
-                logMaster(to_string(source) + " wants work");
+                logMPI(to_string(source) + " NEED_WORK");
                 MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-                Graph *graph = initialGraphs->front();
-                initialGraphs->pop_front();
-                myMPI_SendGraph(graph, source, MESSAGE_TAG_WORK);
+                if (initialGraphs->size() > 0) {
+                    Graph *graph = initialGraphs->front();
+                    initialGraphs->pop_front();
+                    logMPI("Have work for " + to_string(source) + " -> sending WORK: " + to_string(graph->hash()));
+//                    graph->print("MASTER ------------ ");
+                    myMPI_SendGraph(graph, source, MESSAGE_TAG_WORK);
+                } else {
+                    logMPI("No more work for " + to_string(source) + " -> sending NO_MORE_WORK");
+                    MPI_Send(&buffer, 1, MPI_INT, source, MESSAGE_TAG_NO_MORE_WORK, MPI_COMM_WORLD);
+                }
                 break;
             }
 
             case MESSAGE_TAG_NEW_BEST: { // Slave found a new best solution, update it
                 int source = status.MPI_SOURCE;
                 MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                logMaster(to_string(source) + " found new best. Edges: " + to_string(buffer));
+                logMPI(to_string(source) + " found new best. Edges: " + to_string(buffer));
 
-                if (bestGraph->getEdgesCount() < buffer) {
-                    // Graph being received really is better than what I currently have
-                    Graph *graph = myMPI_ReceiveGraph(source);
+//                if (!bestGraph || bestGraph->getEdgesCount() < buffer) {
+                logMPI("   - receiving");
+                // Graph being received really is better than what I currently have
+                Graph *graph = myMPI_ReceiveGraph(source);
+                logMPI("   - done receiving");
+                if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
                     delete bestGraph;
                     bestGraph = graph;
                 }
+//                }
                 break;
             }
 
             default:
+                logMPI("Unknown tag for Master: " + status.MPI_TAG);
                 throw new invalid_argument("Unknown tag for Master: " + status.MPI_TAG);
         }
     }
@@ -519,12 +542,13 @@ void MPI_ProcessSlave() {
     int buffer = PROCESS_RANK;
 
     while (true) {
+        logMPI("Request work");
         MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEED_WORK, MPI_COMM_WORLD);
         Graph *startGraph = myMPI_ReceiveGraph(0);
 
         if (!startGraph) {
             // No more work to be done, stop the loop
-            logSlave("!startGraph break");
+            logMPI("!startGraph -> break");
             break;
         }
 
@@ -534,17 +558,18 @@ void MPI_ProcessSlave() {
         threadCount = std::thread::hardware_concurrency();
         #endif
 
-        doLog("MPI_ProcessSlave 1");
         betterGraphFound = false; // flag will be true if doSearchOpenMP finds a better result
         Graph *bestFound = doSearchOpenMP(*startGraph, threadCount);
-        doLog("MPI_ProcessSlave 2 - " + (bestFound == NULL ? "NULL" : to_string(bestFound->getEdgesCount())));
 
-        if (betterGraphFound) {
-            doLog("MPI_ProcessSlave 3");
-            buffer = bestFound->edgesCount;
-            MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEW_BEST, MPI_COMM_WORLD);
-            doLog("MPI_ProcessSlave 4");
-        }
+//        if (betterGraphFound) {
+        logMPI("Found local best: " + to_string(bestFound->edgesCount));
+        buffer = bestFound->edgesCount;
+        logMPI("    ... sending flag");
+        MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEW_BEST, MPI_COMM_WORLD);
+        logMPI("    ... sending graph");
+        myMPI_SendGraph(bestFound, 0, MESSAGE_TAG_NEW_BEST);
+        logMPI("    ... done.");
+//        }
     }
 }
 
