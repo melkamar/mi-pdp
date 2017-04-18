@@ -16,7 +16,7 @@
 
 using namespace std;
 namespace ompsolver {
-    Graph *bestGraph = NULL;
+    Graph *bestGraphOMP = NULL;
     int MIN_EDGES_SOLUTION = 0;
 
     /**
@@ -48,7 +48,7 @@ namespace ompsolver {
             // Only begin loop if removing an edge from this graph will make sense
             if (
                     (graph->getEdgesCount() < graph->nodes) ||
-                    (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                    (bestGraphOMP && graph->getEdgesCount() <= bestGraphOMP->getEdgesCount())
                     ) { // Graph is already as sparse as possible, no reason to process it
                 delete graph;
                 continue;
@@ -73,7 +73,7 @@ namespace ompsolver {
                         continue; // this graph must be disjoint -> skip searching
                     }
 
-                    if (bestGraph && graph->getEdgesCount() < bestGraph->getEdgesCount()) {
+                    if (bestGraphOMP && graph->getEdgesCount() < bestGraphOMP->getEdgesCount()) {
                         // this graph is already worse than the found maximum -> skip searching
                         graph->setAdjacency(i, j, true);
                         continue;
@@ -84,9 +84,9 @@ namespace ompsolver {
                     switch (bip) {
                         case 1: // Is bipartite -> check if better than current best.
                             // Do not process it further in any case, because all subsequent graphs will only be worse.
-                            if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
-                                if (bestGraph) delete bestGraph;
-                                bestGraph = new Graph(*graph);
+                            if (!bestGraphOMP || (graph->getEdgesCount() > bestGraphOMP->getEdgesCount())) {
+                                delete bestGraphOMP;
+                                bestGraphOMP = new Graph(*graph);
                             }
                             break;
 
@@ -96,7 +96,7 @@ namespace ompsolver {
                         case 0: // Is connected but not bipartite -> check if it makes sense to search further
                             if (graph->getEdgesCount() < graph->nodes)
                                 break; // this graph already has the minimum possible edges and is not a solution -> skip searching
-                            if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                            if (bestGraphOMP && graph->getEdgesCount() <= bestGraphOMP->getEdgesCount())
                                 break; // this graph is already worse than the found maximum -> skip searching
 
 
@@ -134,6 +134,7 @@ namespace ompsolver {
         switch (bip) {
             case 1:
 //            printBest(&startGraph);
+                cout << "   starting graph is already bipartite: " <<startGraph.hash() <<endl;
                 return &startGraph;
             case -1:
                 cout << "Given source graph is disjoint! I refuse to process it." << endl;
@@ -154,9 +155,15 @@ namespace ompsolver {
             doSearchDFS(graph);
         }
 
-//    printBest(bestGraph);
-        return bestGraph;
-//    delete bestGraph;
+//    printBest(bestGraphOMP);
+        if (bestGraphOMP){
+            cout <<"doSearchOpenMP returns: " << bestGraphOMP->getEdgesCount() << " edges -- " << bestGraphOMP->hash() <<endl;
+        } else {
+            cout <<"doSearchOpenMP found: NULL" <<endl;
+        }
+
+        return new Graph(*bestGraphOMP);
+//    delete bestGraphOMP;
     }
 
     /**
@@ -167,7 +174,7 @@ namespace ompsolver {
         // Only begin loop if removing an edge from this graph will make sense
         if (
                 (graph->getEdgesCount() < graph->nodes) ||
-                (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                (bestGraphOMP && graph->getEdgesCount() <= bestGraphOMP->getEdgesCount())
                 ) { // Graph is already as sparse as possible, no reason to process it
             delete graph;
             return;
@@ -192,7 +199,7 @@ namespace ompsolver {
                     continue; // this graph must be disjoint -> skip searching
                 }
 
-                if (bestGraph && graph->getEdgesCount() < bestGraph->getEdgesCount()) {
+                if (bestGraphOMP && graph->getEdgesCount() < bestGraphOMP->getEdgesCount()) {
                     // this graph is already worse than the found maximum -> skip searching
                     graph->setAdjacency(i, j, true);
                     continue;
@@ -202,12 +209,12 @@ namespace ompsolver {
                 switch (bip) {
                     case 1: // Is bipartite -> check if better than current best.
                         // Do not process it further in any case, because all subsequent graphs will only be worse.
-                        if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
+                        if (!bestGraphOMP || (graph->getEdgesCount() > bestGraphOMP->getEdgesCount())) {
                             #pragma omp critical
                             {
-                                if (!bestGraph || (graph->getEdgesCount() > bestGraph->getEdgesCount())) {
-                                    if (bestGraph) delete bestGraph;
-                                    bestGraph = new Graph(*graph);
+                                if (!bestGraphOMP || (graph->getEdgesCount() > bestGraphOMP->getEdgesCount())) {
+                                    if (bestGraphOMP) delete bestGraphOMP;
+                                    bestGraphOMP = new Graph(*graph);
 
                                     #if defined(_OPENMP)
                                     int threadNum = omp_get_thread_num();
@@ -217,7 +224,7 @@ namespace ompsolver {
 
 //                                betterGraphFound = true;
 
-                                    cout << "New best graph edges count: " << bestGraph->getEdgesCount()
+                                    cout << "New best graph edges count: " << bestGraphOMP->getEdgesCount()
                                          << ". Found by thread " << threadNum << endl;
                                 }
                             }
@@ -230,7 +237,7 @@ namespace ompsolver {
                     case 0: // Is connected but not bipartite -> check if it makes sense to search further
                         if (graph->getEdgesCount() < graph->nodes)
                             break; // this graph already has the minimum possible edges and is not a solution -> skip searching
-                        if (bestGraph && graph->getEdgesCount() <= bestGraph->getEdgesCount())
+                        if (bestGraphOMP && graph->getEdgesCount() <= bestGraphOMP->getEdgesCount())
                             break; // this graph is already worse than the found maximum -> skip searching
 
                         Graph *newGraph = new Graph(*graph);

@@ -225,7 +225,7 @@ namespace mpisolver {
                     case MESSAGE_TAG_SLAVE_RESULT: { // Slave found a new solution, check and update current best
                         int source = status.MPI_SOURCE;
                         MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                        logMPI(to_string(source) + " found new best. Edges: " + to_string(buffer));
+                        logMPI(to_string(source) + " found new local best. Edges: " + to_string(buffer));
 
                         logMPI("   - receiving");
                         Graph *graph = recvGraph(source);
@@ -233,6 +233,7 @@ namespace mpisolver {
 
                         // If slave's solution is better than what I have
                         if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
+                            logMPI("Setting new global best: " + graph->getEdgesCount());
                             delete bestGraph;
                             bestGraph = graph;
                         }
@@ -246,18 +247,35 @@ namespace mpisolver {
                 }
             } else { // probeFlag == 0
                 if (initialGraphs->size() > 0) {
+//                if (false) {
                     Graph *graph = initialGraphs->front();
                     initialGraphs->pop_front();
                     logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +
                            ". Graphs left to process: " + to_string(initialGraphs->size()));
+
                     unsigned threadCount = 1;
                     #if defined(_OPENMP)
                     threadCount = std::thread::hardware_concurrency();
                     #endif
+
+                    graph = new Graph(*graph);
                     Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
                     if (!bestGraph || (bestFound && bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
-                        delete bestGraph;
-                        bestGraph = bestFound;
+                        /* DEBUGGING SEGFAULT */
+                        if (bestFound && bestFound->getEdgesCount() > 24) {
+                            logMPI("Setting up global best through MASTER calculation: " +
+                                   (bestFound ? to_string(bestFound->getEdgesCount()) : "-1"));
+                            logMPI("    previous best: " + to_string(1) + (bestGraph ? " not null" : " NULL"));
+                            logMPI("    previous best: " + to_string(bestGraph->getEdgesCount()));
+                            logMPI("    new best: " + to_string(bestFound->getEdgesCount()));
+                            bestFound->print("          ");
+
+                            delete bestGraph;
+                            bestGraph = bestFound;
+                        } else { /* REGULAR BRANCH */
+                            delete bestGraph;
+                            bestGraph = bestFound;
+                        }
                     }
 
                 } else {
@@ -307,7 +325,8 @@ namespace mpisolver {
             logMPI("  ... sending flag");
             MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_SLAVE_RESULT, MPI_COMM_WORLD);
             logMPI("  ... sending graph");
-            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT, -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
+            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT,
+                      -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
             logMPI("  ... done.");
 //        }
         }
