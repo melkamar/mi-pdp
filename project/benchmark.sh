@@ -2,15 +2,17 @@
 
 set -e -E
 
-EXECUTABLE_SEQUENTIAL="solver-seq"
-EXECUTABLE_PARALLEL="solver"
+#EXECUTABLE_SEQUENTIAL="solver-seq"
+#EXECUTABLE_PARALLEL="solver"
+EXECUTABLE_PARALLEL="mpirun"
+EXECUTABLE_PARALLEL_ARGS="-n 4 ./solver"
 
 function runCommand {
     fn="$1"
     expectedEdges="$2"
     executable="$3"
 
-    output=$(/usr/bin/time -o "out_time_$executable" -f %E "./$executable" "input/official/$fn")
+    output=$(/usr/bin/time -o "out_time_$executable" -f %E "$executable" $EXECUTABLE_PARALLEL_ARGS "input/official/$fn")
     elapsed_time=$(cat "out_time_$executable")
 
     # Check that solution is correct
@@ -64,11 +66,11 @@ function reportParallel {
     echo "OK ${fn}: $time_millis ms   (multithreaded)"
 }
 
-benchmark "graph10_5.txt" 19
-benchmark "graph17_3.txt" 22
-benchmark "graph20_3.txt" 26
-benchmark "graph25_3.txt" 34
-benchmark "graph14_4.txt" 22
+#reportParallel "graph10_5.txt" 19
+#reportParallel "graph17_3.txt" 22
+#reportParallel "graph20_3.txt" 26
+#reportParallel "graph25_3.txt" 34
+#reportParallel "graph14_4.txt" 22
 
 reportParallel "graph10_6.txt" 20
 reportParallel "graph12_5.txt" 22
