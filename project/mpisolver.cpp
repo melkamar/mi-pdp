@@ -44,11 +44,10 @@ namespace mpisolver {
         MPI_Comm_size(MPI_COMM_WORLD, &processCount);
 
         if (PROCESS_RANK == 0) {
-            MPI_ProcessMaster(graph, processCount, processCount * graphsPerProcess);
-
+            mpisolver::processMaster(graph, processCount, processCount * graphsPerProcess);
             printBest(bestGraph);
         } else {
-            MPI_ProcessSlave();
+            mpisolver::processSlave();
         }
 
         MPI_Finalize();
@@ -62,7 +61,7 @@ namespace mpisolver {
         }
     }
 
-    void myMPI_SendGraph(Graph *graph, int targetProcessId, int tag) {
+    void sendGraph(Graph *graph, int targetProcessId, int tag) {
         logMPI("   ... sending graph to " + to_string(targetProcessId) + " with tag " + to_string(tag) + " and hash " +
                to_string(graph->hash()));
 
@@ -83,7 +82,7 @@ namespace mpisolver {
         logMPI("   ... finished sending graph.");
     }
 
-    Graph *myMPI_ReceiveGraph(int source) {
+    Graph *recvGraph(int source) {
         int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
 
         // Receive ints - edges of the best graph etc.
@@ -150,7 +149,7 @@ namespace mpisolver {
      *  - bool* - 2nd row of matrix
      *  - ....
      */
-    void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
+    void processMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
         short bip = startGraph.isBipartiteOrConnected();
         switch (bip) {
             case 1:
@@ -188,7 +187,7 @@ namespace mpisolver {
                         initialGraphs->pop_front();
                         logMPI("Have work for " + to_string(source) + " -> sending WORK: " + to_string(graph->hash()) +
                                ". Graphs left to process: " + to_string(initialGraphs->size()));
-                        myMPI_SendGraph(graph, source, MESSAGE_TAG_WORK);
+                        sendGraph(graph, source, MESSAGE_TAG_WORK);
                     } else {
                         logMPI("No more work for " + to_string(source) + " -> sending NO_MORE_WORK");
                         MPI_Send(&buffer, 1, MPI_INT, source, MESSAGE_TAG_NO_MORE_WORK, MPI_COMM_WORLD);
@@ -208,7 +207,7 @@ namespace mpisolver {
 //                if (!bestGraph || bestGraph->getEdgesCount() < buffer) {
                     logMPI("   - receiving");
                     // Graph being received really is better than what I currently have
-                    Graph *graph = myMPI_ReceiveGraph(source);
+                    Graph *graph = recvGraph(source);
                     logMPI("   - done receiving");
                     if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
                         delete bestGraph;
@@ -231,13 +230,13 @@ namespace mpisolver {
     }
 
 
-    void MPI_ProcessSlave() {
+    void processSlave() {
         int buffer = PROCESS_RANK;
 
         while (true) {
             logMPI("Request work");
             MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEED_WORK, MPI_COMM_WORLD);
-            Graph *startGraph = myMPI_ReceiveGraph(0);
+            Graph *startGraph = recvGraph(0);
 
             if (!startGraph) {
                 // No more work to be done, stop the loop
@@ -260,7 +259,7 @@ namespace mpisolver {
             logMPI("  ... sending flag");
             MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEW_BEST, MPI_COMM_WORLD);
             logMPI("  ... sending graph");
-            myMPI_SendGraph(bestFound, 0, MESSAGE_TAG_NEW_BEST);
+            sendGraph(bestFound, 0, MESSAGE_TAG_NEW_BEST);
             logMPI("  ... done.");
 //        }
         }

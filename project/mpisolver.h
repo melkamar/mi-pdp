@@ -10,10 +10,10 @@
 namespace mpisolver {
     void runMPI(int argc, char **argv, Graph &graph, int graphsPerProcess);
     void logMPI(std::string text);
-    void myMPI_SendGraph(Graph *graph, int targetProcessId, int tag);
-    Graph *myMPI_ReceiveGraph(int source);
-    void MPI_ProcessMaster(Graph &startGraph, int processCount, int initialGraphsCount);
-    void MPI_ProcessSlave();
+    void sendGraph(Graph *graph, int targetProcessId, int tag);
+    Graph *recvGraph(int source);
+    void processMaster(Graph &startGraph, int processCount, int initialGraphsCount);
+    void processSlave();
     void printBest(Graph *bestGraph);
 }
 
