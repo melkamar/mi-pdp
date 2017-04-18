@@ -226,8 +226,6 @@ namespace mpisolver {
 
                     case MESSAGE_TAG_SLAVE_RESULT: { // Slave found a new solution, check and update current best
                         int source = status.MPI_SOURCE;
-                        MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                        logMPI(to_string(source) + " found new best. Edges: " + to_string(buffer));
 
                         logMPI("   - receiving");
                         Graph *graph = recvGraph(source);
@@ -246,22 +244,23 @@ namespace mpisolver {
                         throw new invalid_argument("Unknown tag for Master: " + status.MPI_TAG);
 
                 }
-            } else { // probeFlag == 0
+            } else { // probeFlag == 0  ->  no slave waiting for work
                 if (initialGraphs->size() > 0) {
                     Graph *graph = initialGraphs->front();
                     initialGraphs->pop_front();
                     logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +
                            ". Graphs left to process: " + to_string(initialGraphs->size()));
+
                     unsigned threadCount = 1;
                     #if defined(_OPENMP)
                     threadCount = std::thread::hardware_concurrency();
                     #endif
+
                     Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
                     if (!bestGraph || (bestFound && bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
                         delete bestGraph;
                         bestGraph = bestFound;
                     }
-
                 } else {
                     if (noMoreWorksSent == processCount - 1) {
                         logMPI("No more work. All slaves done. Exiting loop.");
@@ -300,18 +299,12 @@ namespace mpisolver {
             threadCount = std::thread::hardware_concurrency();
             #endif
 
-//            betterGraphFound = false; // flag will be true if doSearchOpenMP finds a better result
             Graph *bestFound = ompsolver::doSearchOpenMP(*startGraph, threadCount);
 
-//        if (betterGraphFound) {
             logMPI("Found local best: " + to_string(bestFound->edgesCount));
-            buffer = bestFound->edgesCount; // Todo remove sending just this int, it's pointless
-            logMPI("  ... sending flag");
-            MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_SLAVE_RESULT, MPI_COMM_WORLD);
             logMPI("  ... sending graph");
             sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT, -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
             logMPI("  ... done.");
-//        }
         }
 
         logMPI("== DONE == ProcessSlave");
