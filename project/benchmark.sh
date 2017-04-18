@@ -66,11 +66,11 @@ function reportParallel {
     echo "OK ${fn}: $time_millis ms   (multithreaded)"
 }
 
-#reportParallel "graph10_5.txt" 19
-#reportParallel "graph17_3.txt" 22
-#reportParallel "graph20_3.txt" 26
-#reportParallel "graph25_3.txt" 34
-#reportParallel "graph14_4.txt" 22
+reportParallel "graph10_5.txt" 19
+reportParallel "graph17_3.txt" 22
+reportParallel "graph20_3.txt" 26
+reportParallel "graph25_3.txt" 34
+reportParallel "graph14_4.txt" 22
 
 reportParallel "graph10_6.txt" 20
 reportParallel "graph12_5.txt" 22
