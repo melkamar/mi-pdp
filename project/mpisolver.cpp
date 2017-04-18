@@ -26,6 +26,7 @@ namespace mpisolver {
     Graph *bestGraph = NULL;
     int PROCESS_RANK = -1;
     int MIN_EDGES_SOLUTION = 0;
+    bool masterWillIdleMessageShown = false; // Flag whether No more work on master message has been shown yet to avoid spamming the log
 
     /**
      * Entrypoint for MPI Master and Slave processes.
@@ -61,14 +62,40 @@ namespace mpisolver {
         }
     }
 
-    void sendGraph(Graph *graph, int targetProcessId, int tag) {
+    /*
+     *
+     *
+     */
+
+    /**
+     * Send a serialized Graph object with some extra info to a MPI process.
+     *
+     * Message format:
+     *  - int*
+     *    - [0] - best edges count found so far
+     *    - [1] - number of nodes
+     *    - [2] - startI
+     *    - [3] - startJ
+     *    - [4] - edges count of the matrix (to avoid having to walk the matrix to reconstruct this value)
+     *  - bool* - 1st row of matrix (size=number of nodes)
+     *  - bool* - 2nd row of matrix
+     *  - ....
+     *
+     * @param graph Pointer to a Graph object to send.
+     * @param targetProcessId Target MPI process ID.
+     * @param tag MPI tag to send with the graph.
+     * @param bestGraphEdgesCount Edges count of the currently best graph known to the sender. Used when sending work
+     *                            from Master to Slaves to update Slaves' state space cutting.
+     */
+    void sendGraph(Graph *graph, int targetProcessId, int tag, int bestGraphEdgesCount) {
         logMPI("   ... sending graph to " + to_string(targetProcessId) + " with tag " + to_string(tag) + " and hash " +
                to_string(graph->hash()));
 
         int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
-        if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
-        else intBuffer[0] = -1;
+//        if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
+//        else intBuffer[0] = -1;
 
+        intBuffer[0] = bestGraphEdgesCount;
         intBuffer[1] = graph->nodes;
         intBuffer[2] = graph->startI;
         intBuffer[3] = graph->startJ;
@@ -129,26 +156,9 @@ namespace mpisolver {
         Graph *graph = new Graph(graph_nodes, adjacency, graph_startI, graph_startJ, graph_edgesCount);
         logMPI("Received graph, hash: " + to_string(graph->hash()));
 
-//    cout << "SLAVE  |" << PROCESS_RANK << " Received graph. Best: " << best_edges << " | nodes: " << graph_nodes
-//         << " | start: [" << graph_startI
-//         << "," << graph_startJ << "]" << endl;
-//    graph->print("SLAVE " + to_string(PROCESS_RANK) + ": ");
-
         return graph;
     }
 
-    /*
-     * Message format:
-     * WORK:
-     *  - int*
-     *    - [0] - best edges count so far
-     *    - [1] - number of nodes
-     *    - [2] - startI
-     *    - [3] - startJ
-     *  - bool* - 1st row of matrix (size=number of nodes)
-     *  - bool* - 2nd row of matrix
-     *  - ....
-     */
     void processMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
         logMPI("Master started.");
         short bip = startGraph.isBipartiteOrConnected();
@@ -169,59 +179,95 @@ namespace mpisolver {
 
         int buffer;
         MPI_Status status;
+        int probeFlag = 0;
 
         int noMoreWorksSent = 0; // how many slaves have stopped working?
+
+        // For some reason the initial Iprobe never contained any messages, but the second one did, so do this initial "flush" to fix it.
+        MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &probeFlag, &status);
+        std::this_thread::sleep_for(std::chrono::milliseconds(
+                500)); // sleep the Master for a bit to allow Slaves' initial messages to arrive
 
         // In a loop listen for slaves' messages
         while (true) {
             bool breakloop = false;
 
-            MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-            switch (status.MPI_TAG) {
-                case MESSAGE_TAG_NEED_WORK: { // Slave needs a new thing to work on
-                    int source = status.MPI_SOURCE;
-                    logMPI(to_string(source) + " NEED_WORK");
-                    MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+            // Non-blocking probe. If nothing has arrived, do a calculation on master instead of waiting
+            MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &probeFlag, &status);
+            if (probeFlag != 0) { // Flag is not zero -> a message is waiting
+                switch (status.MPI_TAG) {
+                    case MESSAGE_TAG_NEED_WORK: { // Slave needs a new thing to work on
+                        int source = status.MPI_SOURCE;
+                        logMPI("Slave #" + to_string(source) + " needs work.");
+                        MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-                    if (initialGraphs->size() > 0) {
-                        Graph *graph = initialGraphs->front();
-                        initialGraphs->pop_front();
-                        logMPI("Have work for " + to_string(source) + " -> sending WORK: " + to_string(graph->hash()) +
-                               ". Graphs left to process: " + to_string(initialGraphs->size()));
-                        sendGraph(graph, source, MESSAGE_TAG_WORK);
-                    } else {
-                        logMPI("No more work for " + to_string(source) + " -> sending NO_MORE_WORK");
-                        MPI_Send(&buffer, 1, MPI_INT, source, MESSAGE_TAG_NO_MORE_WORK, MPI_COMM_WORLD);
+                        if (initialGraphs->size() > 0) {
+                            Graph *graph = initialGraphs->front();
+                            initialGraphs->pop_front();
+                            logMPI("Have work for " + to_string(source) + " -> sending WORK: " +
+                                   to_string(graph->hash()) +
+                                   ". Graphs left to process: " + to_string(initialGraphs->size()));
 
-                        noMoreWorksSent++; // Number of "NO_MORE_WORK" messages sent to slaves. TODO this should be a broadcast
-                        if (noMoreWorksSent == processCount - 1) {
-                            breakloop = true;
+                            sendGraph(graph, source, MESSAGE_TAG_WORK, (bestGraph ? bestGraph->getEdgesCount() : -1));
+                        } else {
+                            logMPI("No more work for " + to_string(source) + " -> sending NO_MORE_WORK");
+                            MPI_Send(&buffer, 1, MPI_INT, source, MESSAGE_TAG_NO_MORE_WORK, MPI_COMM_WORLD);
+
+                            noMoreWorksSent++; // Number of "NO_MORE_WORK" messages sent to slaves. TODO this should be a broadcast
+                            if (noMoreWorksSent == processCount - 1) {
+                                breakloop = true;
+                            }
                         }
+                        break;
                     }
-                    break;
+
+                    case MESSAGE_TAG_SLAVE_RESULT: { // Slave found a new solution, check and update current best
+                        int source = status.MPI_SOURCE;
+                        MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                        logMPI(to_string(source) + " found new best. Edges: " + to_string(buffer));
+
+                        logMPI("   - receiving");
+                        Graph *graph = recvGraph(source);
+                        logMPI("   - done receiving");
+
+                        // If slave's solution is better than what I have
+                        if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
+                            delete bestGraph;
+                            bestGraph = graph;
+                        }
+                        break;
+                    }
+
+                    default:
+                        logMPI("Unknown tag for Master: " + status.MPI_TAG);
+                        throw new invalid_argument("Unknown tag for Master: " + status.MPI_TAG);
+
                 }
-
-                case MESSAGE_TAG_SLAVE_RESULT: { // Slave found a new solution, check and update current best
-                    int source = status.MPI_SOURCE;
-                    MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
-                    logMPI(to_string(source) + " found new best. Edges: " + to_string(buffer));
-
-                    logMPI("   - receiving");
-                    Graph *graph = recvGraph(source);
-                    logMPI("   - done receiving");
-
-                    // If slave's solution is better than what I have
-                    if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
+            } else { // probeFlag == 0
+                if (initialGraphs->size() > 0) {
+                    Graph *graph = initialGraphs->front();
+                    initialGraphs->pop_front();
+                    logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +
+                           ". Graphs left to process: " + to_string(initialGraphs->size()));
+                    unsigned threadCount = 1;
+                    #if defined(_OPENMP)
+                    threadCount = std::thread::hardware_concurrency();
+                    #endif
+                    Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
+                    if (!bestGraph || (bestFound && bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
                         delete bestGraph;
-                        bestGraph = graph;
+                        bestGraph = bestFound;
                     }
-                    break;
+
+                } else {
+                    if (noMoreWorksSent == processCount - 1) {
+                        logMPI("No more work. All slaves done. Exiting loop.");
+                        breakloop = true;
+                    } else if (!masterWillIdleMessageShown) {
+                        logMPI("No more work. Master will idle for slaves' messages.");
+                        masterWillIdleMessageShown = true;
+                    }
                 }
-
-                default:
-                    logMPI("Unknown tag for Master: " + status.MPI_TAG);
-                    throw new invalid_argument("Unknown tag for Master: " + status.MPI_TAG);
-
             }
 
             if (breakloop) break;
@@ -256,11 +302,11 @@ namespace mpisolver {
 
 //        if (betterGraphFound) {
             logMPI("Found local best: " + to_string(bestFound->edgesCount));
-            buffer = bestFound->edgesCount;
+            buffer = bestFound->edgesCount; // Todo remove sending just this int, it's pointless
             logMPI("  ... sending flag");
             MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_SLAVE_RESULT, MPI_COMM_WORLD);
             logMPI("  ... sending graph");
-            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT);
+            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT, -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
             logMPI("  ... done.");
 //        }
         }
