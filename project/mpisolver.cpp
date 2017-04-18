@@ -46,6 +46,8 @@ namespace mpisolver {
 
         if (PROCESS_RANK == 0) {
             mpisolver::processMaster(graph, processCount, processCount * graphsPerProcess);
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             printBest(bestGraph);
         } else {
             mpisolver::processSlave();
