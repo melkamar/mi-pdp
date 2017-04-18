@@ -18,7 +18,7 @@ using namespace std;
 namespace mpisolver {
 
     #define MESSAGE_TAG_NEED_WORK 1 // the slave is requesting new work
-    #define MESSAGE_TAG_NEW_BEST 2 // the message payload contains a newly found best result's edges count
+    #define MESSAGE_TAG_SLAVE_RESULT 2 // the message payload contains a newly found best result's edges count
     #define MESSAGE_TAG_WORK 3 // the message payload contains a graph to be solved by a slave
     #define MESSAGE_TAG_NO_MORE_WORK 4 // there is no more work for a slave to be done
     #define MPI_GRAPH_INT_PARAMS_COUNT 5
@@ -101,7 +101,7 @@ namespace mpisolver {
                 logMPI("ReceiveGraph: No more work!");
                 return NULL;
 
-            case MESSAGE_TAG_NEW_BEST:
+            case MESSAGE_TAG_SLAVE_RESULT:
                 // A new best graph is being sent.
                 logMPI("ReceiveGraph: New best result");
                 break;
@@ -150,6 +150,7 @@ namespace mpisolver {
      *  - ....
      */
     void processMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
+        logMPI("Master started.");
         short bip = startGraph.isBipartiteOrConnected();
         switch (bip) {
             case 1:
@@ -172,9 +173,9 @@ namespace mpisolver {
         int noMoreWorksSent = 0; // how many slaves have stopped working?
 
         // In a loop listen for slaves' messages
-        //    while (!initialGraphs->empty()) {
         while (true) {
             bool breakloop = false;
+
             MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
             switch (status.MPI_TAG) {
                 case MESSAGE_TAG_NEED_WORK: { // Slave needs a new thing to work on
@@ -191,7 +192,8 @@ namespace mpisolver {
                     } else {
                         logMPI("No more work for " + to_string(source) + " -> sending NO_MORE_WORK");
                         MPI_Send(&buffer, 1, MPI_INT, source, MESSAGE_TAG_NO_MORE_WORK, MPI_COMM_WORLD);
-                        noMoreWorksSent++;
+
+                        noMoreWorksSent++; // Number of "NO_MORE_WORK" messages sent to slaves. TODO this should be a broadcast
                         if (noMoreWorksSent == processCount - 1) {
                             breakloop = true;
                         }
@@ -199,21 +201,20 @@ namespace mpisolver {
                     break;
                 }
 
-                case MESSAGE_TAG_NEW_BEST: { // Slave found a new best solution, update it
+                case MESSAGE_TAG_SLAVE_RESULT: { // Slave found a new solution, check and update current best
                     int source = status.MPI_SOURCE;
                     MPI_Recv(&buffer, 1, MPI_INT, source, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
                     logMPI(to_string(source) + " found new best. Edges: " + to_string(buffer));
 
-//                if (!bestGraph || bestGraph->getEdgesCount() < buffer) {
                     logMPI("   - receiving");
-                    // Graph being received really is better than what I currently have
                     Graph *graph = recvGraph(source);
                     logMPI("   - done receiving");
+
+                    // If slave's solution is better than what I have
                     if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
                         delete bestGraph;
                         bestGraph = graph;
                     }
-//                }
                     break;
                 }
 
@@ -257,9 +258,9 @@ namespace mpisolver {
             logMPI("Found local best: " + to_string(bestFound->edgesCount));
             buffer = bestFound->edgesCount;
             logMPI("  ... sending flag");
-            MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_NEW_BEST, MPI_COMM_WORLD);
+            MPI_Send(&buffer, 1, MPI_INT, 0, MESSAGE_TAG_SLAVE_RESULT, MPI_COMM_WORLD);
             logMPI("  ... sending graph");
-            sendGraph(bestFound, 0, MESSAGE_TAG_NEW_BEST);
+            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT);
             logMPI("  ... done.");
 //        }
         }
