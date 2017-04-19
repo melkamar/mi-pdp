@@ -25,11 +25,11 @@ function testSolver {
     fi
 }
 
-testSolver "graph10_5.txt" 19 "solver-seq"
-testSolver "graph17_3.txt" 22 "solver-seq"
-testSolver "graph20_3.txt" 26 "solver-seq"
-testSolver "graph25_3.txt" 34 "solver-seq"
-testSolver "graph14_4.txt" 22 "solver-seq"
+#testSolver "graph10_5.txt" 19 "solver-seq"
+#testSolver "graph17_3.txt" 22 "solver-seq"
+#testSolver "graph20_3.txt" 26 "solver-seq"
+#testSolver "graph25_3.txt" 34 "solver-seq"
+#testSolver "graph14_4.txt" 22 "solver-seq"
 
 testSolver "graph10_5.txt" 19 "solver"
 testSolver "graph17_3.txt" 22 "solver"
