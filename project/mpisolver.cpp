@@ -57,6 +57,7 @@ namespace mpisolver {
     }
 
     void logMPI(string text) {
+        return;
         if (PROCESS_RANK == 0) {
             cout << "MASTER  | " << text << endl;
         } else {
@@ -90,8 +91,8 @@ namespace mpisolver {
      *                            from Master to Slaves to update Slaves' state space cutting.
      */
     void sendGraph(Graph *graph, int targetProcessId, int tag, int bestGraphEdgesCount) {
-        logMPI("   ... sending graph to " + to_string(targetProcessId) + " with tag " + to_string(tag) + " and hash " +
-               to_string(graph->hash()));
+//        logMPI("   ... sending graph to " + to_string(targetProcessId) + " with tag " + to_string(tag) + " and hash " +
+//               to_string(graph->hash()));
 
         int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
 //        if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
@@ -156,7 +157,7 @@ namespace mpisolver {
         }
 
         Graph *graph = new Graph(graph_nodes, adjacency, graph_startI, graph_startJ, graph_edgesCount);
-        logMPI("Received graph, hash: " + to_string(graph->hash()));
+//        logMPI("Received graph, hash: " + to_string(graph->hash()));
 
         return graph;
     }
@@ -207,9 +208,9 @@ namespace mpisolver {
                         if (initialGraphs->size() > 0) {
                             Graph *graph = initialGraphs->front();
                             initialGraphs->pop_front();
-                            logMPI("Have work for " + to_string(source) + " -> sending WORK: " +
-                                   to_string(graph->hash()) +
-                                   ". Graphs left to process: " + to_string(initialGraphs->size()));
+//                            logMPI("Have work for " + to_string(source) + " -> sending WORK: " +
+//                                   to_string(graph->hash()) +
+//                                   ". Graphs left to process: " + to_string(initialGraphs->size()));
 
                             sendGraph(graph, source, MESSAGE_TAG_WORK, (bestGraph ? bestGraph->getEdgesCount() : -1));
                         } else {
@@ -233,6 +234,8 @@ namespace mpisolver {
 
                         // If slave's solution is better than what I have
                         if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
+                            cout << "--> New global best found by slave " << source << ", edges: "
+                                 << graph->getEdgesCount() << endl;
                             delete bestGraph;
                             bestGraph = graph;
                         }
@@ -248,8 +251,8 @@ namespace mpisolver {
                 if (initialGraphs->size() > 0) {
                     Graph *graph = initialGraphs->front();
                     initialGraphs->pop_front();
-                    logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +
-                           ". Graphs left to process: " + to_string(initialGraphs->size()));
+//                    logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +
+//                           ". Graphs left to process: " + to_string(initialGraphs->size()));
 
                     unsigned threadCount = 1;
                     #if defined(_OPENMP)
@@ -258,6 +261,8 @@ namespace mpisolver {
 
                     Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
                     if (!bestGraph || (bestFound && bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
+                        cout << "--> New global best found by master, edges: "
+                             << bestFound->getEdgesCount() << endl;
                         delete bestGraph;
                         bestGraph = bestFound;
                     }
@@ -303,7 +308,8 @@ namespace mpisolver {
 
             logMPI("Found local best: " + to_string(bestFound->edgesCount));
             logMPI("  ... sending graph");
-            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT, -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
+            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT,
+                      -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
             logMPI("  ... done.");
         }
 
@@ -322,5 +328,9 @@ namespace mpisolver {
         } else {
             cout << "No best graph found. This should not happen!" << endl;
         }
+    }
+
+    int getRank(){
+        return PROCESS_RANK;
     }
 }

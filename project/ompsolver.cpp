@@ -12,6 +12,7 @@
 #include <thread>
 
 #include "Graph.h"
+#include "mpisolver.h"
 #include <mpi.h>
 
 using namespace std;
@@ -218,7 +219,7 @@ namespace ompsolver {
 //                                betterGraphFound = true;
 
                                     cout << "New best graph edges count: " << bestGraph->getEdgesCount()
-                                         << ". Found by thread " << threadNum << endl;
+                                         << ". Found by thread " << threadNum <<" | MPI rank: "<<mpisolver::getRank()<< endl;
                                 }
                             }
                         }

@@ -15,6 +15,7 @@ namespace mpisolver {
     void processMaster(Graph &startGraph, int processCount, int initialGraphsCount);
     void processSlave();
     void printBest(Graph *bestGraph);
+    int getRank();
 }
 
 #endif //PROJECT_MPISOLVER_H
