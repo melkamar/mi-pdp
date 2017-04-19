@@ -155,7 +155,7 @@ namespace mpisolver {
         int graph_startJ = intBuffer[3]; // startJ coordinate of the graph being sent
         int graph_edgesCount = intBuffer[4]; // edges count of the graph being sent (to save processing power on calculating it)
 
-        if (best_edges == graph_nodes == graph_startI == graph_startJ == graph_edgesCount == -2){
+        if (graph_edgesCount == -2){
             // NULL graph sent
             return NULL;
         }
@@ -246,7 +246,7 @@ namespace mpisolver {
                         logMPI("   - done receiving");
 
                         // If slave's solution is better than what I have
-                        if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
+                        if (graph && (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount())) {
                             cout << "--> New global best found by slave " << source << ", edges: "
                                  << graph->getEdgesCount() << endl;
                             delete bestGraph;
@@ -261,7 +261,8 @@ namespace mpisolver {
 
                 }
             } else { // probeFlag == 0  ->  no slave waiting for work
-                if (initialGraphs->size() > 0) {
+	        if (false){ // TODO: handle NULL bestFound below
+                //if (initialGraphs->size() > 0) {
                     Graph *graph = initialGraphs->front();
                     initialGraphs->pop_front();
 //                    logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +

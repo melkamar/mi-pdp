@@ -63,7 +63,7 @@ INFINIBAND="false"
 # | Parallel program with arguments.                                          |
 # |                                                                           |
 #  ===========================================================================
-MY_PARALLEL_PROGRAM="./solver input/official/graph10_6.txt"
+MY_PARALLEL_PROGRAM="valgrind ./solver input/official/graph10_5.txt"
 
 
 
