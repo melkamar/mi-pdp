@@ -33,3 +33,9 @@ větší, než buffer, tak se ořízne a zmizi! To nechceš.
 1. Instalace MPI: `sudo apt install libopenmpi-dev`
 2. Úprava Makefile - místo `g++` použít `mpiCC` (flagy a parametry zůstávají stejné)
 3. Spuštění programu: `mpirun -n <počet-procesů> ./program input/graph.txt`
+
+### Měření rychlosti - poslední cvičení
+- Měřit instance co jsou sekvenčně cca 10 minut (1-20 klidně)
+- Použít `qrun2` pro měření. Je to podobný jako `qrun`, jen to plánuje jinde.
+- Až 60 vláken - 6 procesů, každý až 10 vláken. (CPU jsou 6core)
+- Měření nedělat z bashe, ale nějakým `MPI_wtime (vtime?)` přímo z C kódu.
