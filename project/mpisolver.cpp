@@ -97,19 +97,27 @@ namespace mpisolver {
         int intBuffer[MPI_GRAPH_INT_PARAMS_COUNT];
 //        if (bestGraph) intBuffer[0] = bestGraph->edgesCount;
 //        else intBuffer[0] = -1;
+        if (graph) {
+            intBuffer[0] = bestGraphEdgesCount;
+            intBuffer[1] = graph->nodes;
+            intBuffer[2] = graph->startI;
+            intBuffer[3] = graph->startJ;
+            intBuffer[4] = graph->edgesCount;
 
-        intBuffer[0] = bestGraphEdgesCount;
-        intBuffer[1] = graph->nodes;
-        intBuffer[2] = graph->startI;
-        intBuffer[3] = graph->startJ;
-        intBuffer[4] = graph->edgesCount;
+            MPI_Send(&intBuffer, MPI_GRAPH_INT_PARAMS_COUNT, MPI_INT, targetProcessId, tag, MPI_COMM_WORLD);
 
-        MPI_Send(&intBuffer, MPI_GRAPH_INT_PARAMS_COUNT, MPI_INT, targetProcessId, tag, MPI_COMM_WORLD);
-
-        for (int i = 0; i < graph->nodes; i++) {
-            MPI_Send(graph->adjacency[i], graph->nodes, MPI_CXX_BOOL, targetProcessId, tag, MPI_COMM_WORLD);
+            for (int i = 0; i < graph->nodes; i++) {
+                MPI_Send(graph->adjacency[i], graph->nodes, MPI_CXX_BOOL, targetProcessId, tag, MPI_COMM_WORLD);
+            }
+            logMPI("   ... finished sending graph.");
+        } else { // graph == NULL
+            intBuffer[0] = -2;
+            intBuffer[1] = -2;
+            intBuffer[2] = -2;
+            intBuffer[3] = -2;
+            intBuffer[4] = -2;
+            MPI_Send(&intBuffer, MPI_GRAPH_INT_PARAMS_COUNT, MPI_INT, targetProcessId, tag, MPI_COMM_WORLD);
         }
-        logMPI("   ... finished sending graph.");
     }
 
     Graph *recvGraph(int source) {
@@ -146,6 +154,11 @@ namespace mpisolver {
         int graph_startI = intBuffer[2]; // startI coordinate of the graph being sent
         int graph_startJ = intBuffer[3]; // startJ coordinate of the graph being sent
         int graph_edgesCount = intBuffer[4]; // edges count of the graph being sent (to save processing power on calculating it)
+
+        if (best_edges == graph_nodes == graph_startI == graph_startJ == graph_edgesCount == -2){
+            // NULL graph sent
+            return NULL;
+        }
 
         bool **adjacency = new bool *[graph_nodes];
         for (int i = 0; i < graph_nodes; ++i) {
@@ -306,11 +319,15 @@ namespace mpisolver {
 
             Graph *bestFound = ompsolver::doSearchOpenMP(*startGraph, threadCount);
 
-            logMPI("Found local best: " + to_string(bestFound->edgesCount));
-            logMPI("  ... sending graph");
-            sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT,
-                      -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
-            logMPI("  ... done.");
+            if (bestFound) {
+                logMPI("Found local best: " + to_string(bestFound->edgesCount));
+                logMPI("  ... sending graph");
+                sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT,
+                          -1); // no point in sending edges count to master, he will read that from the graph itself, therefore -1
+                logMPI("  ... done.");
+            } else {
+                sendGraph(bestFound, 0, MESSAGE_TAG_SLAVE_RESULT, -1);
+            }
         }
 
         logMPI("== DONE == ProcessSlave");
@@ -330,7 +347,7 @@ namespace mpisolver {
         }
     }
 
-    int getRank(){
+    int getRank() {
         return PROCESS_RANK;
     }
 }
