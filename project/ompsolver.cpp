@@ -156,7 +156,11 @@ namespace ompsolver {
         }
 
 //    printBest(bestGraph);
-        return new Graph(*bestGraph);
+        if (bestGraph) {
+            return new Graph(*bestGraph);
+        } else {
+            return NULL;
+        }
 //    delete bestGraph;
     }
 
