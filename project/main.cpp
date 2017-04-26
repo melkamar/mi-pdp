@@ -70,6 +70,6 @@ int main(int argc, char *argv[]) {
 
     printInit(graph.nodes, threadCount, fn);
 
-    mpisolver::runMPI(argc, argv, graph, 10);
+    mpisolver::runMPI(argc, argv, graph, 40);
     return 0;
 }
