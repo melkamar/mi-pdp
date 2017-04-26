@@ -130,8 +130,24 @@ namespace seqsolver {
         delete graph;
     }
 
+    void printBest(Graph *bestGraph) {
+        if (bestGraph) {
+            cout << "Best bipartite graph edge count: " << endl;
+            cout << "================" << endl;
+            cout << "== " << setw(4) << bestGraph->getEdgesCount() << " edges ==" << endl;
+            cout << "================" << endl;
+            bestGraph->printBipartiteSets();
+            cout << endl;
+            bestGraph->printEdges();
+        } else {
+            cout << "No best graph found. This should not happen!" << endl;
+        }
+    }
+
     void search(Graph &graph){
         Graph * startGraph = new Graph(graph);
         doSearchDFS(startGraph);
+
+        printBest(bestGraph);
     }
 }
