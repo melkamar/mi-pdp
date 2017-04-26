@@ -250,7 +250,7 @@ namespace mpisolver {
                         logMPI("   - done receiving");
 
                         // If slave's solution is better than what I have
-                        if (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount()) {
+                        if (graph && (!bestGraph || bestGraph->getEdgesCount() < graph->getEdgesCount())) {
                             cout << "--> New global best found by slave " << source << ", edges: "
                                  << graph->getEdgesCount() << endl;
                             delete bestGraph;
