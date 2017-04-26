@@ -3,6 +3,7 @@
 #include <iomanip>
 
 #include <thread>
+#include <mpi.h>
 
 #include "Graph.h"
 #include "mpisolver.h"
@@ -60,6 +61,8 @@ int main(int argc, char *argv[]) {
 
     char *fn = argv[1];
 
+    double wtimeStart = MPI_Wtime();
+
     Graph graph = loadProblem(fn);
 
 
@@ -69,7 +72,10 @@ int main(int argc, char *argv[]) {
     #endif
 
     printInit(graph.nodes, threadCount, fn);
-
     mpisolver::runMPI(argc, argv, graph, 10);
+
+    double wtimeEnd = MPI_Wtime();
+    cout << endl << endl << "Computation time: " << (wtimeEnd - wtimeStart) << endl;
+
     return 0;
 }
