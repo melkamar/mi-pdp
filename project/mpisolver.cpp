@@ -273,7 +273,7 @@ namespace mpisolver {
                     #endif
 
                     Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
-                    if (!bestGraph || (bestFound && bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
+                    if (bestFound && (!bestGraph || bestFound->getEdgesCount() > bestGraph->getEdgesCount())){
                         cout << "--> New global best found by master, edges: "
                              << bestFound->getEdgesCount() << endl;
                         delete bestGraph;
