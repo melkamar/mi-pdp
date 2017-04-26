@@ -48,6 +48,9 @@ větší, než buffer, tak se ořízne a zmizi! To nechceš.
     ```bash
     # Pusť job na nodech s 20-core CPU, pusť to na 6 procesorech ve frontě pdp_long.
     qrun2 20c 6 pdp_long parallel_job.sh
+
+    # Pusť program na jednom jádře, jedno vlákno.
+    qrun2 12c 1 pdp_serial serial_job.sh
     ```
 
     Aplikace může získat maximálně 10 vláken na procesor, takže maximálně
