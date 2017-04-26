@@ -145,9 +145,14 @@ namespace seqsolver {
     }
 
     void search(Graph &graph){
+        double wtimeStart = MPI_Wtime();
+
         Graph * startGraph = new Graph(graph);
         doSearchDFS(startGraph);
 
         printBest(bestGraph);
+        double wtimeEnd = MPI_Wtime();
+
+        cout << endl << endl << "Computation time: " << endl << (wtimeEnd - wtimeStart) << endl;
     }
 }

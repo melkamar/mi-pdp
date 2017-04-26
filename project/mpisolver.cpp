@@ -48,11 +48,11 @@ namespace mpisolver {
             double wtimeStart = MPI_Wtime();
             mpisolver::processMaster(graph, processCount, processCount * graphsPerProcess);
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             printBest(bestGraph);
             double wtimeEnd = MPI_Wtime();
 
-            cout << endl << endl << "Computation time: " << (wtimeEnd - wtimeStart) << endl;
+            cout << endl << endl << "Computation time: " << endl << (wtimeEnd - wtimeStart) << endl;
         } else {
             mpisolver::processSlave();
         }
@@ -159,7 +159,7 @@ namespace mpisolver {
         int graph_startJ = intBuffer[3]; // startJ coordinate of the graph being sent
         int graph_edgesCount = intBuffer[4]; // edges count of the graph being sent (to save processing power on calculating it)
 
-        if ((best_edges == graph_nodes) && (best_edges == -2)){
+        if ((best_edges == graph_nodes) && (best_edges == -2)) {
             // NULL graph sent
             return NULL;
         }
@@ -277,7 +277,7 @@ namespace mpisolver {
                     #endif
 
                     Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
-                    if (bestFound && (!bestGraph || bestFound->getEdgesCount() > bestGraph->getEdgesCount())){
+                    if (bestFound && (!bestGraph || bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
                         cout << "--> New global best found by master, edges: "
                              << bestFound->getEdgesCount() << endl;
                         delete bestGraph;
