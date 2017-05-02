@@ -4,6 +4,7 @@
 
 #include <thread>
 #include <cstring>
+#include <mpi.h>
 
 #include "seqsolver.h"
 #include "ompsolver.h"
@@ -86,8 +87,13 @@ int main(int argc, char *argv[]) {
         int threadCount = stoi(argv[3]);
         printInit(graph.nodes, threadCount, fn);
         cout << "  Only OpenMP" << endl;
+
+        double wtimeStart = MPI_Wtime();
         Graph * bgraph = ompsolver::doSearchOpenMP(graph, threadCount);
         mpisolver::printBest(bgraph);
+        double wtimeEnd = MPI_Wtime();
+
+        cout << endl << endl << "Computation time: " << endl << (wtimeEnd - wtimeStart) << endl;
     } else {
         cout << "Unknown parameter \""<<argv[2]<<"\". Expected seq or par." << endl;
         exit(2);

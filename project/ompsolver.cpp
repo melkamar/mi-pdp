@@ -146,7 +146,7 @@ namespace ompsolver {
         MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
         // BFS to obtain a certain number of tasks
-        deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 7);
+        deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 250);
 
         int i;
         #pragma omp parallel for private(i) num_threads(threadCount)
@@ -223,7 +223,8 @@ namespace ompsolver {
 //                                betterGraphFound = true;
 
                                     cout << "New best graph edges count: " << bestGraph->getEdgesCount()
-                                         << ". Found by thread " << threadNum <<" | MPI rank: "<<mpisolver::getRank()<< endl;
+                                         << ". Found by thread " << threadNum << " | MPI rank: " << mpisolver::getRank()
+                                         << endl;
                                 }
                             }
                         }
