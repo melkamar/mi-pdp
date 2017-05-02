@@ -64,7 +64,7 @@ INFINIBAND="false"
 # |                                                                           |
 #  ===========================================================================
 #MY_PARALLEL_PROGRAM="./solver input/official/graph18_4.txt"
-MY_PARALLEL_PROGRAM="../../project/solver ../../project/input/final-graphs/graph14_5.txt mpi 2"
+MY_PARALLEL_PROGRAM="../../project/solver ../../project/input/final-graphs/1-graph14_5.txt mpi 2"
 
 
 
