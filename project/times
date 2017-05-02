@@ -72,3 +72,12 @@ OK graph14_4.txt: 6860 ms   (multithreaded)
 OK graph10_6.txt: 151280 ms   (multithreaded)
 OK graph12_5.txt: 32620 ms   (multithreaded)
 OK graph18_4.txt: 82410 ms   (multithreaded)
+
+========================================================================================================================
+STAR BENCHMARKING
+official/graph14_5
+    - SEQUENTIAL
+        426.837
+        425.872
+        422.282
+    - PARALLEL
