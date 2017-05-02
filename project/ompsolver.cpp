@@ -130,7 +130,7 @@ namespace ompsolver {
         return resultQ;
     }
 
-    Graph *doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
+    Graph *doSearchOpenMP(Graph &startGraph, int threadCount) {
         short bip = startGraph.isBipartiteOrConnected();
         switch (bip) {
             case 1:
@@ -217,7 +217,7 @@ namespace ompsolver {
                                     #if defined(_OPENMP)
                                     int threadNum = omp_get_thread_num();
                                     #else
-                                    int threadNum = 0;
+                                    int threadNum = -10;
                                     #endif
 
 //                                betterGraphFound = true;

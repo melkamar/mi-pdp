@@ -11,7 +11,7 @@
 namespace ompsolver {
     std::deque<Graph *> *generateInitialStates(Graph &startGraph, int requestedSize);
 
-    Graph *doSearchOpenMP(Graph &startGraph, unsigned threadCount);
+    Graph *doSearchOpenMP(Graph &startGraph, int threadCount);
 
     void doSearchDFS(Graph *graph);
 

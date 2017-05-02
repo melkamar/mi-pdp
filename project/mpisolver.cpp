@@ -35,7 +35,7 @@ namespace mpisolver {
      * @param graph Starting Graph.
      * @param graphsPerProcess Number of initial graphs to generate for each process.
      */
-    void runMPI(int argc, char **argv, Graph &graph, int graphsPerProcess) {
+    void runMPI(int argc, char **argv, Graph &graph, int graphsPerProcess, int threadCount) {
         int processCount;
 
         MPI_Init(&argc, &argv);
@@ -46,7 +46,7 @@ namespace mpisolver {
 
         if (PROCESS_RANK == 0) {
             double wtimeStart = MPI_Wtime();
-            mpisolver::processMaster(graph, processCount, processCount * graphsPerProcess);
+            mpisolver::processMaster(graph, processCount, processCount * graphsPerProcess, threadCount);
 
 //            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             printBest(bestGraph);
@@ -54,7 +54,7 @@ namespace mpisolver {
 
             cout << endl << endl << "Computation time: " << endl << (wtimeEnd - wtimeStart) << endl;
         } else {
-            mpisolver::processSlave();
+            mpisolver::processSlave(threadCount);
         }
 
         MPI_Finalize();
@@ -179,7 +179,7 @@ namespace mpisolver {
         return graph;
     }
 
-    void processMaster(Graph &startGraph, int processCount, int initialGraphsCount) {
+    void processMaster(Graph &startGraph, int processCount, int initialGraphsCount, int threadCount) {
         logMPI("Master started.");
         short bip = startGraph.isBipartiteOrConnected();
         switch (bip) {
@@ -271,11 +271,6 @@ namespace mpisolver {
 //                    logMPI("No messages from slaves in queue -> will do work on master: " + to_string(graph->hash()) +
 //                           ". Graphs left to process: " + to_string(initialGraphs->size()));
 
-                    unsigned threadCount = 1;
-                    #if defined(_OPENMP)
-                    threadCount = std::thread::hardware_concurrency();
-                    #endif
-
                     Graph *bestFound = ompsolver::doSearchOpenMP(*graph, threadCount);
                     if (bestFound && (!bestGraph || bestFound->getEdgesCount() > bestGraph->getEdgesCount())) {
                         cout << "--> New global best found by master, edges: "
@@ -301,7 +296,7 @@ namespace mpisolver {
     }
 
 
-    void processSlave() {
+    void processSlave(int threadCount) {
         int buffer = PROCESS_RANK;
 
         while (true) {
@@ -316,11 +311,6 @@ namespace mpisolver {
             }
 
             // generate some initial graphs
-            unsigned threadCount = 1;
-            #if defined(_OPENMP)
-            threadCount = std::thread::hardware_concurrency();
-            #endif
-
             Graph *bestFound = ompsolver::doSearchOpenMP(*startGraph, threadCount);
 
             if (bestFound) {

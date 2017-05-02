@@ -5,9 +5,11 @@
 #include <thread>
 #include <cstring>
 
+#include "seqsolver.h"
+#include "ompsolver.h"
+
 #include "Graph.h"
 #include "mpisolver.h"
-#include "seqsolver.h"
 
 
 using namespace std;
@@ -55,8 +57,12 @@ Graph loadProblem(string filename) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        cout << "Enter input file name. Run as './solver input/graph seq' to run sequentially." << endl;
+    // ./solver input/graph seq
+    // ./solver input/graph par 10
+
+
+    if (argc < 3) {
+        cout << "Enter input file name. Run as './solver input/graph [seq|par] [num_threads]'" << endl;
         return 1;
     }
 
@@ -64,17 +70,27 @@ int main(int argc, char *argv[]) {
     Graph graph = loadProblem(fn);
 
 
-    unsigned threadCount = 1;
-    #if defined(_OPENMP)
-    threadCount = std::thread::hardware_concurrency();
-    #endif
+//    unsigned threadCount = 1;
+//    #if defined(_OPENMP)
+//    threadCount = std::thread::hardware_concurrency();
+//    #endif
 
-    if (argc == 3 && strcmp(argv[2], "seq") == 0) {
+    if (strcmp(argv[2], "seq") == 0) {
         printInit(graph.nodes, 1, fn);
         seqsolver::search(graph);
-    } else {
+    } else if (strcmp(argv[2], "par") == 0) {
+        int threadCount = stoi(argv[3]);
         printInit(graph.nodes, threadCount, fn);
-        mpisolver::runMPI(argc, argv, graph, 40);
+        mpisolver::runMPI(argc, argv, graph, 40, threadCount);
+    } else if (strcmp(argv[2], "omp") == 0) {
+        int threadCount = stoi(argv[3]);
+        printInit(graph.nodes, threadCount, fn);
+        cout << "  Only OpenMP" << endl;
+        Graph * bgraph = ompsolver::doSearchOpenMP(graph, threadCount);
+        mpisolver::printBest(bgraph);
+    } else {
+        cout << "Unknown parameter \""<<argv[2]<<"\". Expected seq or par." << endl;
+        exit(2);
     }
     return 0;
 }
