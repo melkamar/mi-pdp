@@ -86,7 +86,11 @@ official/graph14_5
 
 custom_14_5_10
     - SEQUENTIAL
-        364.135
+        364.135    (453 on local)
+
+custom_16_5
+    - SEQUENTIAL
+                   (1291.82 on local)
 
 
 
