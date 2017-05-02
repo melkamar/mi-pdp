@@ -75,7 +75,7 @@ V každém kroku DFS je nutné vygenerovat potomky řešeného stavu (grafu), kt
 Algoritmus generování funguje tak, že ze zadaného grafu postupně odebírá hrany, čímž generuje podgrafy. Hrany jsou odebírány následujícím způsobem -- každý graf má indexy \texttt{startI} a \texttt{startJ} do matice sousednosti. Ty určují, od které pozice v matici dále budou odebírány hrany (tj. měněny jedičky na nuly). Na předchozí hrany algoritmus nesmí sahat.
 
 Vygenerování množiny potomků stavu s grafem \texttt{G} pak znamená:
-\begin{lstlisting}[frame=single]
+\begin{lstlisting}[tabsize=2,language=python]
 	given graph G:
 	
 	neighbors = []
@@ -139,16 +139,77 @@ Kompilace a spuštění programu v příkazové řádce se provede následujíc�
 
 V případě použití parametrů \texttt{omp} nebo \texttt{mpi} je ještě nutné udat parametr \texttt{num\_threads}, který určuje, kolik vláken se má na každém výpočetním uzlu spustit.
 
-\section{Popis paralelniho algoritmu a jeho implementace v MPI}
+\section{Popis paralelního algoritmu a jeho implementace v MPI}
+Paralelní algoritmus v MPI umožňuje počítat distribuovaně na více výpočetních uzlech. Jedná se o algoritmus s distribuovanou pamětí -- každý z uzlů má svou vlastní a je třeba řešit jejich synchronizaci.
 
-Popiste paralelni algoritmus, opet vyjdete ze zadani a presne vymezte
-odchylky, zvlaste u algoritmu pro vyvazovani zateze, hledani darce, ci
-ukonceni vypoctu.  Popiste a vysvetlete strukturu celkoveho
-paralelniho algoritmu na urovni procesuu v MPI a strukturu kodu
-jednotlivych procesu. Napr. jak je naimplemtovana smycka pro cinnost
-procesu v aktivnim stavu i v stavu necinnosti. Jake jste zvolili
-konstanty a parametry pro skalovani algoritmu. Struktura a semantika
-prikazove radky pro spousteni programu.
+Výpočet maxima na každém z uzlů probíhá totožně jako v předchozím případě algoritmu OpenMP. Rozdíl je v tom kdy a s jakými parametry se tyto OpenMP výpočty spouštějí. To je řízeno komunikací uzlů v MPI. V této části popíšu způsob, jakým tato komunikace probíhá.
+
+Obecný popis algoritmu je takový, že Master proces na začátku výpočtu vygeneruje počáteční stavy. Slave procesy si je od Mastera postupně odebírají a sami je u sebe řeší v OpenMP. Mastera notifikují o nově nalezených maximech a zároveň jsou od něj informováni o nových maximech, nalezených jinými Slavy. Master sám počítá, pokud nejsou žádné Slave procesy, které by potřebovaly novou práci.
+
+\subsection{Master proces}
+Master proces je proces s MPI rankem 0. Na začátku výpočtu standardním způsobem uvedeným výše vygeneruje počáteční grafy. Empiricky jsem jejich počet stanovil jako 80násobek počtu MPI procesů. V tuto chvíli Slave procesy nic nedělají. Po vygenerování stavů Master přejde do své výpočetní smyčky, která je zjednodušeně pseudokódem zapsána takto:
+
+\begin{lstlisting}[tabsize=2,language=python]
+while not done:
+	if message_pending:
+		if message_is(slave_needs_work):
+			if initial_graphs.size() > 0:
+				send_work(slave_id, initial_graphs.pop())
+			else:
+				send_no_more_work(slave_id)
+				if all_slaves_received_no_more_work:
+					done = true
+					
+		elif message_is(slave_finished_computing):
+			candidate_graph = receive_result(slave_id)
+			if candidate_graph > current_best:
+				current_best = candidate_graph
+				
+	else:  # No pending messages -> start computing on Master node
+		if initial_graphs.size() > 0:
+			work_graph = initial_graphs.pop()
+			computeOpenMP(work_graph, current_best)
+\end{lstlisting}
+
+Smyčka se ukončí, pokud byly všechny grafy zpracovány a všem Slave procesům odeslána zpráva \texttt{no\_more\_work}. Po jejím skončení je nalezeno nejlepší řešení, protože byl prohledán celý (ořezaný) stavový prostor.
+
+\subsection{Slave proces}
+Slave proces je komplementární k Masteru. Jeho výpočetní smyčka vypadá takto:
+\begin{lstlisting}[tabsize=2,language=python]
+while not done:
+	work = request_work()
+	if work is NO_MORE_WORK:
+		break  # No more work to be done, quit loop
+		
+	my_best = computeOpenMP(work.graph, work.master_best)
+	send_result(my_best)
+\end{lstlisting}
+
+Zde je smyčka jednodušší, Slave jen dokola žádá o práci a počítá. Spolu s prací Master vždy pošle i doposud nejlepší řešení, které si Slave uloží a použije pro ořezání stavového prostoru.
+
+\subsection{Formát MPI zpráv}
+Pro komunikaci v MPI používám hlavně jeden typ zprávy - Graf. Ta obsahuje zakódovaný objekt grafu a metadata. Kromě tohoto typu zprávy pak jen zprávy obsahující příznak (\texttt{tag}) -- to jsou zprávy žádosti o práci a oznámení o tom, že žádná práce již není k dispozici.
+
+Formát zprávy s grafem má tento formát:
+\begin{itemize}
+	\item \texttt{int[5]}: \begin{enumerate}
+		\item Počet hran nejlepšího zatím nalezeného řešení (používá se jen při zasílání grafu od Master pro Slave proces)
+		\item Počet uzlů posílaného grafu
+		\item \texttt{startI}
+		\item \texttt{startJ}
+		\item Počet hran posílaného grafu (šlo by spočítat z poslané matice, ale tímto se šetří výpočetní čas)
+	\end{enumerate}
+
+	\item \texttt{bool[n]}, kde \texttt{n} je počet uzlů grafu -- první řádek matice sousednosti 
+	\item \texttt{bool[n]} -- druhý řádek matice sousednosti
+	\item \texttt{...}
+\end{itemize}
+
+\subsection{Příkazová řádka}
+Příkazy pro program jsou popsané v sekci výše. Pokud chci program spustit ve více procesech (pro MPI komunikaci), lze použít tuto konstrukci:
+\begin{lstlisting}
+	$ mpirun -n <process_count> ./solver input/graph mpi <threads_per_process>
+\end{lstlisting}
 
 \section{Namerene vysledky a vyhodnoceni}
 
