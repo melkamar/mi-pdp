@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     if (strcmp(argv[2], "seq") == 0) {
         printInit(graph.nodes, 1, fn);
         seqsolver::search(graph);
-    } else if (strcmp(argv[2], "par") == 0) {
+    } else if (strcmp(argv[2], "mpi") == 0) {
         int threadCount = stoi(argv[3]);
         printInit(graph.nodes, threadCount, fn);
         mpisolver::runMPI(argc, argv, graph, 40, threadCount);
