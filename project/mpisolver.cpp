@@ -206,7 +206,7 @@ namespace mpisolver {
         // For some reason the initial Iprobe never contained any messages, but the second one did, so do this initial "flush" to fix it.
         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &probeFlag, &status);
         // sleep the Master for a bit to allow Slaves' initial messages to arrive
-        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+//        std::this_thread::sleep_for(std::chrono::milliseconds(1500));
         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &probeFlag, &status);
 
         // In a loop listen for slaves' messages

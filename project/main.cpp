@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(argv[2], "mpi") == 0) {
         int threadCount = stoi(argv[3]);
         printInit(graph.nodes, threadCount, fn);
-        mpisolver::runMPI(argc, argv, graph, 40, threadCount);
+        mpisolver::runMPI(argc, argv, graph, 80, threadCount);
     } else if (strcmp(argv[2], "omp") == 0) {
         int threadCount = stoi(argv[3]);
         printInit(graph.nodes, threadCount, fn);
