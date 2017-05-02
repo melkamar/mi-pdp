@@ -146,7 +146,7 @@ namespace ompsolver {
         MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
         // BFS to obtain a certain number of tasks
-        deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 250);
+        deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 700);
 
         int i;
         #pragma omp parallel for private(i) num_threads(threadCount)
