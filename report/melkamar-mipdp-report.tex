@@ -112,14 +112,32 @@ Před samotným zpracováním vygenerovaných stavů je vhodné provést kontrol
 
 \section{Popis paralelního algoritmu a jeho implementace v OpenMP}
 
-Popiste paralelni algoritmus, opet vyjdete ze zadani a presne vymezte
-odchylky, zvlaste u algoritmu pro vyvazovani zateze, hledani darce, ci
-ukonceni vypoctu.  Popiste a vysvetlete strukturu celkoveho
-paralelniho algoritmu na urovni procesuu v OpenMP a strukturu kodu
-jednotlivych procesu. Napr. jak je naimplemtovana smycka pro cinnost
-procesu v aktivnim stavu i v stavu necinnosti. Jake jste zvolili
-konstanty a parametry pro skalovani algoritmu. Struktura a semantika
-prikazove radky pro spousteni programu.
+Paralelní algoritmus v OpenMP, tj. řešení se sdílenou pamětí, jsem řešil dvěma způsoby -- pomocí task paralelismu a datového paralelismu.
+
+\textit{Task paralelismus} jsem řešil jednoduše vytvářením nového \texttt{OMP Task} při každém rekurzivním volání DFS funkce. Až na toto tvoření tasků a uzamykání aktualizace nejlepšího řešení do kritické sekce, bylo toto řešení totožné se sekvenčním.
+
+\textit{Datový paralelismus} byl implementačně o něco náročnější než \textit{Task paralelismus}. Pro jeho korektní běh bylo nejprve nutné vygenerovat dostatečně velkou množinu počátečních (disjunktních) stavů, nad kterou poté budou OpenMP vlákna iterovat. Generování počátečních stavů jsem extrahoval do samostatné funkce, která ale vnitřně funguje velmi podobně běžnému BFS algoritmu. Prohledávání probíhá stejně jako u "ostrého" řešení s tím, že ve chvíli, kdy velikost fronty grafů čekajících na zpracování odpovídá zadanému parametru, algoritmus na její konec vloží nedozpracovaný graf (abych nepřišel o žádný ze stavů) a celou frontu vrátí jako výsledek funkce. Nad touto frontou grafů pak standardně pomocí \texttt{\#pragma omp parallel for} spustím požadovaný počet vláken.
+
+Tím, že vlákna mají disjunktní množinu počátečních stavů, které jsou na sobě nezávislé, nemusí na sebe nijak čekat (vyjma kritické sekce při nalezení nového maxima).
+
+Počet generovaných stavů jsem empiricky stanovil na 200násobek počtu vláken, ale ideální hodnota tohoto parametru silně závisela na vstupních datech.
+
+\subsection{Příkazová řádka}
+Kompilace a spuštění programu v příkazové řádce se provede následující sekvencí příkazů:
+\begin{verbatim}
+	$ cd project
+	$ make clean && make
+	$ ./solver <input-graph> [seq|omp|mpi] [num_threads]
+\end{verbatim}
+
+\noindent Druhý parametr programu udává:
+\begin{itemize}
+	\item \textbf{seq} -- sekvenční běh.
+	\item \textbf{omp} -- běh pouze v OpenMP (nepoužívají se volání MPI).
+	\item \textbf{mpi} -- běh OpenMP + MPI (viz dále).
+\end{itemize}
+
+V případě použití parametrů \texttt{omp} nebo \texttt{mpi} je ještě nutné udat parametr \texttt{num\_threads}, který určuje, kolik vláken se má na každém výpočetním uzlu spustit.
 
 \section{Popis paralelniho algoritmu a jeho implementace v MPI}
 
