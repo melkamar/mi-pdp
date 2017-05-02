@@ -1,4 +1,5 @@
 \documentclass[czech]{article}
+\usepackage{listings}
 %\documentstyle[epsf,epic,eepic,eepicemu]{article} \oddsidemargin=-5mm
 
 \usepackage[utf8]{inputenc} % LaTeX source encoded as UTF-8
@@ -68,15 +69,46 @@ Algoritmus řešící problém MBG sekvenčně využívá prohledávání do hlo
 
 K reprezentaci uzlů prohledávaného stavového prostoru jsem zvolil matici sousednosti. Z hlediska implementace to znamená to, že každý stav je reprezentován třídou \texttt{Graph}, jež si uchovává vlastní kopii dvourozměrného pole -- matici sousednosti. Kromě toho má některé pomocné metody, například pro ověření, zda je tento graf bipartitní, spojitý, či nespojitý (metoda vrací hodnoty $1$, $0$, resp. $-1$ jako příznak těchto vlastností).
 
-Popiste problem, ktery vas program resi. Jako vychozi pouzijte text
-zadani, ktery rozsirte o presne vymezeni vsech odchylek, ktere jste
-vuci zadani behem implementace provedli 
-(napr.  upravy heuristicke funkce, organizace zasobniku,
-apod.). Zminte i pripadne i takove prvky algoritmu, ktere v zadani
-nebyly specifikovany, ale ktere se ukazaly jako dulezite.  Dale
-popiste vstupy a vystupy algoritmu (format vstupnich a vystupnich
-dat). Uvedte tabulku namerenych casu sekvencniho algoritmu pro ruzne
-velka data.
+\subsubsection{Generování stavů}
+V každém kroku DFS je nutné vygenerovat potomky řešeného stavu (grafu), které se vloží do zásobníku a budou dále zpracovávat. Algoritmus, kterým jsem se rozhodl tyto sousedy-potomky generovat zajišťuje, že množina vygenerovaných podgrafů bude disjunktní -- tedy že žádné dva grafy nebudou totožné, což by v případě jednoduchého odebírání hran nastávalo.
+
+Algoritmus generování funguje tak, že ze zadaného grafu postupně odebírá hrany, čímž generuje podgrafy. Hrany jsou odebírány následujícím způsobem -- každý graf má indexy \texttt{startI} a \texttt{startJ} do matice sousednosti. Ty určují, od které pozice v matici dále budou odebírány hrany (tj. měněny jedičky na nuly). Na předchozí hrany algoritmus nesmí sahat.
+
+Vygenerování množiny potomků stavu s grafem \texttt{G} pak znamená:
+\begin{lstlisting}[frame=single]
+	given graph G:
+	
+	neighbors = []
+	foreach (i,j)>(startI,startJ):
+		if edge(i,j) is present:
+			new_graph = G.remove_edge(i,j)
+			new_graph.startI = i
+			new_graph.startJ = j
+			neighbors.append(new_graph)
+			
+\end{lstlisting}
+Tímto způsobem generuji stavy, které může mít dále smysl prohledávat.
+
+
+\subsubsection{Ořezávání stavového prostoru}
+Před samotným zpracováním vygenerovaných stavů je vhodné provést kontrolu, zda to má vůbec smysl:
+\begin{itemize}
+	\item Pokud je graf bipartitní, nemá smysl prohledávat jeho potomky -- budou mít určitě menší počet hran a tento graf bude tedy zaručeně lepší.
+	\item Pokud má graf stejný nebo menší počet hran než dosud nejlepší nalezený graf, nemá smysl ho dále prohledávat.
+	\item Pokud je vygenerovaný graf nespojitý, nemá smysl se s ním dále zabývat - zajímají mě pouze spojité grafy. Test spojitosti provádím v rámci testu bipartity, viz popis reprezentace uzlu výše.
+	\item Pokud má graf méně hran než $|V|-1$, nemá smysl se s ním zabývat, jelikož toto je spodní mez řešení.
+\end{itemize}
+
+\subsection{Naměřené časy}
+Časy naměřené na vzorových datech na lokálním stroji (frekvence CPU 2.4GHz) jsou následující:
+
+\begin{itemize}
+	\item \texttt{graph10\_5.txt} -- 1020 ms
+	\item \texttt{graph17\_3.txt} -- 10 ms
+	\item \texttt{graph20\_3.txt} -- 120 ms
+	\item \texttt{graph25\_3.txt} -- 130 ms
+	\item \texttt{graph14\_4.txt} -- 1650 ms
+\end{itemize}
 
 \section{Popis paralelního algoritmu a jeho implementace v OpenMP}
 
