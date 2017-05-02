@@ -74,6 +74,8 @@ OK graph12_5.txt: 32620 ms   (multithreaded)
 OK graph18_4.txt: 82410 ms   (multithreaded)
 
 ========================================================================================================================
+
+
 STAR BENCHMARKING
 official/graph14_5
     - SEQUENTIAL
@@ -81,3 +83,23 @@ official/graph14_5
         425.872
         422.282
     - PARALLEL
+
+custom_14_5_10
+    - SEQUENTIAL
+        364.135
+
+
+
+
+
+waiting for jobs:
+Your job 22698 ("serial_job_n14_k5_1.sh") has been submitted
+Your job 22699 ("serial_job_n14_k5_2.sh") has been submitted
+Your job 22700 ("serial_job_n14_k5_3.sh") has been submitted
+Your job 22701 ("serial_job_n14_k5_4.sh") has been submitted
+Your job 22702 ("serial_job_n14_k5_5.sh") has been submitted
+Your job 22703 ("serial_job_n14_k5_6.sh") has been submitted
+Your job 22704 ("serial_job_n14_k5_7.sh") has been submitted
+Your job 22705 ("serial_job_n14_k5_8.sh") has been submitted
+Your job 22706 ("serial_job_n14_k5_9.sh") has been submitted
+Your job 22707 ("serial_job_n14_k5_10.sh") has been submitted

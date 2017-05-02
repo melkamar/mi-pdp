@@ -2,8 +2,8 @@
 // Created by Martin on 18.04.2017.
 //
 
-#ifndef PROJECT_OMPSOLVER_H
-#define PROJECT_OMPSOLVER_H
+#ifndef PROJECT_SEQSOLVER_H
+#define PROJECT_SEQSOLVER_H
 
 #include "Graph.h"
 #include <deque>

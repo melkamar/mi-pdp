@@ -130,7 +130,7 @@ namespace ompsolver {
         return resultQ;
     }
 
-    Graph *doSearchOpenMP(Graph &startGraph, unsigned threadCount) {
+    Graph *doSearchOpenMP(Graph &startGraph, int threadCount) {
         short bip = startGraph.isBipartiteOrConnected();
         switch (bip) {
             case 1:
@@ -146,7 +146,7 @@ namespace ompsolver {
         MIN_EDGES_SOLUTION = startGraph.nodes - 1;
 
         // BFS to obtain a certain number of tasks
-        deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 7);
+        deque<Graph *> *initialGraphs = generateInitialStates(startGraph, threadCount * 200);
 
         int i;
         #pragma omp parallel for private(i) num_threads(threadCount)
@@ -217,13 +217,14 @@ namespace ompsolver {
                                     #if defined(_OPENMP)
                                     int threadNum = omp_get_thread_num();
                                     #else
-                                    int threadNum = 0;
+                                    int threadNum = -10;
                                     #endif
 
 //                                betterGraphFound = true;
 
                                     cout << "New best graph edges count: " << bestGraph->getEdgesCount()
-                                         << ". Found by thread " << threadNum <<" | MPI rank: "<<mpisolver::getRank()<< endl;
+                                         << ". Found by thread " << threadNum << " | MPI rank: " << mpisolver::getRank()
+                                         << endl;
                                 }
                             }
                         }
