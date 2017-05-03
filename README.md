@@ -34,6 +34,9 @@ větší, než buffer, tak se ořízne a zmizi! To nechceš.
 2. Úprava Makefile - místo `g++` použít `mpiCC` (flagy a parametry zůstávají stejné)
 3. Spuštění programu: `mpirun -n <počet-procesů> ./program input/graph.txt`
 
+#### Debugging
+- Pro spuštění valgrindu: `mpirun -n procnum valgrind ./program params`
+
 ### Měření rychlosti - poslední cvičení
 - Měřit instance co jsou sekvenčně cca 10 minut (1-20 klidně)
 - Použít `qrun2` pro měření. Je to podobný jako `qrun`, jen to plánuje jinde.
