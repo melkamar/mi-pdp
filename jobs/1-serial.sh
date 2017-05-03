@@ -27,5 +27,5 @@
 # Do not change.
 #$ -pe ompi 1
 
-./solver generator/custom_latest.txt seq
+../project/solver ../project/input/final-graphs/1-graph14_5.txt seq
 

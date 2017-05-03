@@ -77,4 +77,4 @@ reportParallel "graph12_5.txt" 22
 #reportParallel "graph14_4.txt" 22
 reportParallel "graph18_4.txt" 29
 
-reportParallel "graph14_5.txt" 25
+reportParallel "1-graph14_5.txt" 25
