@@ -1,7 +1,7 @@
 \documentclass[czech]{article}
 \usepackage{listings}
 %\documentstyle[epsf,epic,eepic,eepicemu]{article} \oddsidemargin=-5mm
-
+\usepackage{graphicx}
 \usepackage[utf8]{inputenc} % LaTeX source encoded as UTF-8
 \oddsidemargin=-5mm
 \evensidemargin=-5mm\marginparwidth=.08in \marginparsep=.01in
@@ -9,6 +9,9 @@
 %\headsep=25pt\footheight=12pt \footskip=30pt\textheight=25cm
 \textwidth=17cm\columnsep=2mm
 \columnseprule=1pt\parindent=15pt\parskip=2pt
+
+\newcommand{\graphsperthread}{50}
+\newcommand{\graphspermpiproc}{80}
 
 \begin{document}
 \begin{center}
@@ -120,7 +123,7 @@ Paralelní algoritmus v OpenMP, tj. řešení se sdílenou pamětí, jsem řeši
 
 Tím, že vlákna mají disjunktní množinu počátečních stavů, které jsou na sobě nezávislé, nemusí na sebe nijak čekat (vyjma kritické sekce při nalezení nového maxima).
 
-Počet generovaných stavů jsem empiricky stanovil na 200násobek počtu vláken, ale ideální hodnota tohoto parametru silně závisela na vstupních datech.
+Počet generovaných stavů jsem empiricky stanovil na \graphsperthread{}násobek počtu vláken, ale ideální hodnota tohoto parametru silně závisela na vstupních datech.
 
 \subsection{Příkazová řádka}
 Kompilace a spuštění programu v příkazové řádce se provede následující sekvencí příkazů:
@@ -147,7 +150,7 @@ Výpočet maxima na každém z uzlů probíhá totožně jako v předchozím př
 Obecný popis algoritmu je takový, že Master proces na začátku výpočtu vygeneruje počáteční stavy. Slave procesy si je od Mastera postupně odebírají a sami je u sebe řeší v OpenMP. Mastera notifikují o nově nalezených maximech a zároveň jsou od něj informováni o nových maximech, nalezených jinými Slavy. Master sám počítá, pokud nejsou žádné Slave procesy, které by potřebovaly novou práci.
 
 \subsection{Master proces}
-Master proces je proces s MPI rankem 0. Na začátku výpočtu standardním způsobem uvedeným výše vygeneruje počáteční grafy. Empiricky jsem jejich počet stanovil jako 80násobek počtu MPI procesů. V tuto chvíli Slave procesy nic nedělají. Po vygenerování stavů Master přejde do své výpočetní smyčky, která je zjednodušeně pseudokódem zapsána takto:
+Master proces je proces s MPI rankem 0. Na začátku výpočtu standardním způsobem uvedeným výše vygeneruje počáteční grafy. Empiricky jsem jejich počet stanovil jako \graphspermpiproc{}násobek počtu MPI procesů. V tuto chvíli Slave procesy nic nedělají. Po vygenerování stavů Master přejde do své výpočetní smyčky, která je zjednodušeně pseudokódem zapsána takto:
 
 \begin{lstlisting}[tabsize=2,language=python]
 while not done:
@@ -212,22 +215,51 @@ Příkazy pro program jsou popsané v sekci výše. Pokud chci program spustit v
 \end{lstlisting}
 
 \section{Naměřené výsledky a hodnocení}
+\subsection{Vstupní data}
 Běh algoritmu jsem měřil na třech vstupních grafech, těmi byly:
 \begin{itemize}
-	\item \texttt{graph14\_5} - vzorový vstup
-	\item \texttt{custom\_14\_5\_10} - vygenerovaný graf s parametry -n 14 -k 5
-	\item \texttt{custom\_16\_5} - vygenerovaný graf s parametry -n 16 -k 5
+	\item \texttt{graph14\_5} - vzorový vstup, graf o 14 uzlech.
+	\item \texttt{custom\_14\_5\_10} - vygenerovaný graf s parametry -n 14 -k 5, graf o 14 uzlech.
+	\item \texttt{custom\_16\_5} - vygenerovaný graf s parametry -n 16 -k 5, graf o 16 uzlech.
 \end{itemize}
 
-Naměřené časy jsou detailě rozepsány v tabulce \ref{times-table}.
+Rozdělení výpočetních jader je uvedeno v tabulce \ref{cores-distribution}. Naměřené časy v těchto konfiguracích jsou detailně rozepsány v tabulce \ref{times-table} a zobrazeny v grafu \ref{times-graph}. 
+
+\subsection{Parametry škálování}
+Parametry pro škálování výpočtu jsou následující:
+\begin{itemize}
+	\item \textbf{Počet vygenerovaných grafů na jedno vlákno} (v rámci výpočtu OpenMP) -- \graphsperthread
+	\item \textbf{Počet vygenerovaných grafů pro každý MPI proces} -- \graphspermpiproc
+\end{itemize}
+
+
+
+\subsection{Výsledky}
+\begin{table}[]
+	\centering
+	\caption{Rozdělení výpočetních jader}
+	\label{cores-distribution}
+	\begin{tabular}{|l||l|l|}
+		\hline
+		Počet jader & Počet vláken & Počet MPI procesů \\ \hline \hline
+		1           & 1            & 1                 \\ \hline 
+		2           & 2            & 1                 \\ \hline
+		4           & 4            & 1                 \\ \hline
+		8           & 4            & 2                 \\ \hline
+		16          & 4            & 4                 \\ \hline
+		24          & 4            & 6                 \\ \hline
+		32          & 8            & 4                 \\ \hline
+		60          & 10           & 6                 \\ \hline
+	\end{tabular}
+\end{table}
 
 \begin{table}[]
 	\centering
 	\caption{Čas výpočtu algoritmu}
 	\label{times-table}
-	\begin{tabular}{|l|lll|}
+	\begin{tabular}{|r||l|l|l|}
 		\hline
-		& \multicolumn{3}{c|}{Čas výpočtu {[}s{]}} \\ \hline
+		& \multicolumn{3}{c|}{Čas výpočtu {[}s{]}} \\ \hline \hline
 		Počet jader & Graf 1    & Graf 2   & Graf 3            \\ \hline
 		1           & 423,91    & 386,853  & 1309,21           \\
 		2           & 403,442   & 720,561  & 491,596           \\
@@ -240,88 +272,37 @@ Naměřené časy jsou detailě rozepsány v tabulce \ref{times-table}.
 	\end{tabular}
 \end{table}
 
+Z naměřených dat je vidět, že paralelizace s výše uvedenými parametry (počty grafů na vlákno a proces) je neefektivní. Nejen, že je sublineární, v některých případech je dokonce pomalejší, než sekvenční řešení. Nejjednodušším způsobem optimalizace pro 1-4 výpočetní jádra by bylo spuštění programu jen s OpenMP. Algoritmus, který byl použit pro naměření těchto výsledků, vždy běžel v MPI módu -- v případě jediného MPI uzlu tedy celý výpočet probíhal jen v Master MPI procesu a v algoritmu se zbytečně volaly MPI metody \texttt{MPI\_Iprobe}.
 
-\begin{enumerate}
-\item Zvolte tri instance problemu s takovou velikosti vstupnich dat, pro ktere ma sekvencni 
-algoritmus casovou slozitost kolem 5, 10 a 15 minut.
-Pro mereni cas potrebny na cteni dat z disku a ulozeni na disk neuvazujte a zakomentujte
-ladici tisky, logy, zpravy a vystupy.
-\item Merte paralelni cas pri pouziti $i=2,\cdot,32$ procesoru na siti Ethernet.
-%\item Pri mereni kazde instance problemu na dany pocet procesoru spoctete pro vas algoritmus dynamicke delby prace celkovy pocet odeslanych zadosti o praci, prumer na 1 procesor a jejich uspesnost.
-%\item Mereni pro dany pocet procesoru a instanci problemu provedte 3x a pouzijte prumerne hodnoty.
-\item Z namerenych dat sestavte grafy zrychleni $S(n,p)$. Zjistete, zda a za jakych podminek
-doslo k superlinearnimu zrychleni a pokuste se je zduvodnit.
-\item Vyhodnodte komunikacni slozitost dynamickeho vyvazovani zateze a posudte
-vhodnost vami implementovaneho algoritmu pro hledani darce a deleni zasobniku pri reseni vaseho
-problemu. Posudte efektivnost a skalovatelnost algoritmu. Popiste nedostatky
-vasi implementace a navrhnete zlepseni.
-\item Empiricky stanovte 
-granularitu vasi implementace, tj., stupen paralelismu pro danou velikost reseneho
-problemu. Stanovte kriteria pro stanoveni mezi, za kterymi jiz neni
-ucinne rozkladat vypocet na mensi procesy, protoze by komunikacni
-naklady prevazily urychleni paralelnim vypoctem.
+Při 8 jádrech jsou již použity dva MPI uzly, každý se 4 vlákny. V grafech 1 a 3 došlo k poměrně znatelnému zhoršení výpočetní doby, v grafu 2 se doba zlepšila, ale stále byla delší než sekvenční řešení.
 
-\end{enumerate}
+\subsection{Možnosti zlepšení}
+Jak již jsem zmínil výše, velkou roli v době výpočtu hrály parametry pro počet generovaných počátečních grafů v závislosti na počtu vláken a procesů. Hodnoty použité pro výpočet jsem experimentálně stanovil na základě výpočtů na svém počítači, kde byl MPI paralelismus simulován pouze na jednom CPU se dvěma vlákny. 
 
-\section{Zaver}
+Pro zlepšení získaných časů by tedy bylo vhodné experimentovat s nastaveními těchto parametrů, ale tyto experimenty není v dobu odevzdávání zprávy možné uskutečnit, protože fronta čekajících výpočtů na clusteru STAR je neúnosně velká. Nezbyl mi tak dostatek času na optimalizaci časů pro dané vstupní grafy.
 
-Celkove zhodnoceni semestralni prace a zkusenosti ziskanych behem semestru.
+Samotný algoritmus komunikace mezi MPI procesy rovněž poskytuje prostor pro zlepšení. Poté, co Slave proces dokončí výpočet zadaného grafu, odešle o tom Master procesu informaci. Master by mohl ihned zaslat další práci Slave procesu, ale místo toho čeká, až o ni Slave sám požádá.
 
-\section{Literatura}
+Další možností pro experimentování by byla úprava Master procesu tak, aby vůbec nepočítal. Mám podezření, že zejména při vyšším počtu MPI uzlů Slave procesy zbytečně čekají na dokončení výpočtu.
+
+\begin{figure} 
+	\centering
+	\caption{Graf rychlosti výpočtu}
+	\label{times-graph}
+	\includegraphics[width=\textwidth]{graph/times-chart.png}
+\end{figure}
+
+\begin{figure} 
+	\centering
+	\caption{Graf zrychlení výpočtu}
+	\label{speedup-graph}
+	\includegraphics[width=\textwidth]{graph/speedup-chart.png}
+\end{figure}
+
+\section{Závěr}
+
+Algoritmus, který jsem naimplementoval v rámci semestrální práce předmětu MI-PDP je korektní a věřím, že po úpravě komunikačního protokolu a experimentování se škálovacími parametry, což jsem popsal výše, se dostanu na lepší časy a lepší zrychlení. 
 
 \appendix
-
-\section{Navod pro vkladani grafu a obrazku do Texu}
-
-Nejjednodussi zpusob vytvoreni obrazku je pouzit sunovsky graficky editor xfig,
-ze ktrereho lze exportovat latex formaty (v poradi prosty latex, 
-latex s macry epic, eepic, eepicemu) a postscript formaty,
-uvedene poradi odpovida rustu komplikovanosti obrazku
-(postscript umi jakykoliv obrazek, prosta latex macra pouze jednoduche,
-epic makra neco mezi, je treba vyzkouset). Nasleduji priklady
-pro vsechny pripady. 
-
-Obrazek v postscriptu, vycentrovany a na celou sirku stranky, 
-s popisem a cislem. Vsimnete si, jak ridit velikost obrazku.
-%\begin{figure}[ht]
-%\epsfysize=3cm
-%\centerline{\epsfbox{VasObrazek.ps}}
-%\caption{Popis vaseho obrazku}
-%\label{labelvasehoobrazku}
-%\end{figure}
-
-%Obrazek pouze vlozeny mezi radky textu, bez popisu a cislovani.\\
-%\epsfxsize=1cm
-%\rule{0pt}{0pt}\hfill\epsfbox{VasObrazek.ps}\hfill\rule{0pt}{0pt}
-
-%Texovske obrazky maji pripony *.latex, *.epic, *.eepic, a *.eepicemu, respective. 
-%\begin{figure}[ht]
-%\begin{center}
-%\input VasObrazek.latex
-%\end{center}
-%\caption{Popis vaseho obrazku}
-%\label{l1}
-%\end{figure}
-Vypustenim zavorek {\tt figure} dostanete opet pouze ramecek 
-v textu bez cisla a popisu. 
-
-%
-%Takhle jednoduse muzete poskladat obrazky vedle sebe.
-%\begin{center}
-%\setlength{\unitlength}{0.1mm}\input VasObrazek.epic
-%\hglue 5mm 
-%\setlength{\unitlength}{0.15mm}\input VasObrazek.eepic
-%\hglue 5mm 
-%\setlength{\unitlength}{0.2mm}\input VasObrazek.eepicemu
-%\end{center}
-%Ridit velikost texovskych obrazku lze prikazem
-%\begin{verbatim}
-%\setlength{\unitlength}{0.1mm}
-%\end{verbatim}
-ktere meni meritko rastru obrazku, Tyto prikazy je ale soucasne 
-nutne vyhodit ze souboru, ktery xfig vygeneroval.
-
-Pro vytvareni grafu lze pouzit program gnuplot, ktery umi generovat postscriptovy soubor, ktery vlozite
-do Texu vyse uvedenym zpusobem.
 
 \end{document}
