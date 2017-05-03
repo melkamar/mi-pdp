@@ -28,11 +28,11 @@
 #         qrun2 20c 1 pdp_serial serial_job.sh
 #         qrun2 12c 4 pdp_long parallel_job.sh
 
-qrun2 12c 1 pdp_long ./1-serial.sh
-qrun2 12c 1 pdp_long ./1-n2.sh
-qrun2 12c 1 pdp_long ./1-n4.sh
-qrun2 12c 2 pdp_long ./1-n8.sh
-qrun2 12c 4 pdp_long ./1-n16.sh
-qrun2 12c 6 pdp_long ./1-n24.sh
-qrun2 12c 4 pdp_long ./1-n32.sh
-qrun2 12c 6 pdp_long ./1-n60.sh
+qrun2 12c 1 pdp_long ./g1-serial.sh
+qrun2 12c 1 pdp_long ./g1-n2.sh
+qrun2 12c 1 pdp_long ./g1-n4.sh
+qrun2 12c 2 pdp_long ./g1-n8.sh
+qrun2 12c 4 pdp_long ./g1-n16.sh
+qrun2 12c 6 pdp_long ./g1-n24.sh
+qrun2 12c 4 pdp_long ./g1-n32.sh
+qrun2 12c 6 pdp_long ./g1-n60.sh
