@@ -36,3 +36,21 @@ qrun2 12c 4 pdp_long ./g1-n16.sh
 qrun2 12c 6 pdp_long ./g1-n24.sh
 qrun2 12c 4 pdp_long ./g1-n32.sh
 qrun2 12c 6 pdp_long ./g1-n60.sh
+
+qrun2 12c 1 pdp_long ./g2-serial.sh
+qrun2 12c 1 pdp_long ./g2-n2.sh
+qrun2 12c 1 pdp_long ./g2-n4.sh
+qrun2 12c 2 pdp_long ./g2-n8.sh
+qrun2 12c 4 pdp_long ./g2-n16.sh
+qrun2 12c 6 pdp_long ./g2-n24.sh
+qrun2 12c 4 pdp_long ./g2-n32.sh
+qrun2 12c 6 pdp_long ./g2-n60.sh
+
+qrun2 12c 1 pdp_long ./g3-serial.sh
+qrun2 12c 1 pdp_long ./g3-n2.sh
+qrun2 12c 1 pdp_long ./g3-n4.sh
+qrun2 12c 2 pdp_long ./g3-n8.sh
+qrun2 12c 4 pdp_long ./g3-n16.sh
+qrun2 12c 6 pdp_long ./g3-n24.sh
+qrun2 12c 4 pdp_long ./g3-n32.sh
+qrun2 12c 6 pdp_long ./g3-n60.sh
