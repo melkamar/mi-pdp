@@ -211,7 +211,35 @@ Příkazy pro program jsou popsané v sekci výše. Pokud chci program spustit v
 	$ mpirun -n <process_count> ./solver input/graph mpi <threads_per_process>
 \end{lstlisting}
 
-\section{Namerene vysledky a vyhodnoceni}
+\section{Naměřené výsledky a hodnocení}
+Běh algoritmu jsem měřil na třech vstupních grafech, těmi byly:
+\begin{itemize}
+	\item \texttt{graph14\_5} - vzorový vstup
+	\item \texttt{custom\_14\_5\_10} - vygenerovaný graf s parametry -n 14 -k 5
+	\item \texttt{custom\_16\_5} - vygenerovaný graf s parametry -n 16 -k 5
+\end{itemize}
+
+Naměřené časy jsou detailě rozepsány v tabulce \ref{times-table}.
+
+\begin{table}[]
+	\centering
+	\caption{Čas výpočtu algoritmu}
+	\label{times-table}
+	\begin{tabular}{|l|lll|}
+		\hline
+		& \multicolumn{3}{c|}{Čas výpočtu {[}s{]}} \\ \hline
+		Počet jader & Graf 1    & Graf 2   & Graf 3            \\ \hline
+		1           & 423,91    & 386,853  & 1309,21           \\
+		2           & 403,442   & 720,561  & 491,596           \\
+		4           & 389,849   & 732,664  & 604,743           \\
+		8           & 767,365   & 418,172  & \textgreater1800  \\
+		16          &           &          &                   \\
+		24          &           &          &                   \\
+		32          &           &          &                   \\
+		60          &           &          &                   \\ \hline
+	\end{tabular}
+\end{table}
+
 
 \begin{enumerate}
 \item Zvolte tri instance problemu s takovou velikosti vstupnich dat, pro ktere ma sekvencni 
